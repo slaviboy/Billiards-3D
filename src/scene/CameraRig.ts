@@ -12,14 +12,17 @@
 // The two ways of looking at the table, over one scene:
 //
 //   3d   a perspective camera orbiting the table, by default from behind the head rail, framed to
-//        fit the part of the screen the interface leaves free; the player may turn, tilt and zoom.
+//        fit the part of the screen the interface leaves free; the player may turn, tilt, zoom and
+//        pan it.
 //   top  an orthographic camera straight down, no perspective at all, the table lengthwise on a
-//        wide screen and upright on a tall one.
+//        wide screen and upright on a tall one; the player may turn it about the vertical, zoom
+//        and pan it.
 //
-// Switching is a dolly zoom: the perspective camera rises overhead while its field of view narrows
-// and it backs away, keeping the table the same size, until it is all but orthographic; then the
-// orthographic camera takes over with the same framing. Back again the other way. The game and its
-// state are untouched; only the camera moves.
+// Each view keeps its own turn, zoom and pan, so going to the top view and back finds the 3D view
+// where it was left. Switching is a dolly zoom: the perspective camera rises overhead while its
+// field of view narrows and it backs away, keeping the table the same size, until it is all but
+// orthographic; then the orthographic camera takes over with the same framing. Back again the
+// other way. The game and its state are untouched; only the camera moves.
 
 import { MathUtils, OrthographicCamera, PerspectiveCamera, Vector3 } from 'three';
 
@@ -33,9 +36,10 @@ export interface Insets {
 }
 
 interface Orbit {
+  /** Radians round the table; 0 is behind the head rail. In the top view, the turn from upright. */
   azimuth: number;
   elevation: number;
-  /** Distance as a multiple of the distance that just fits the table. */
+  /** Distance (or, in the top view, size) as a multiple of what just fits the table. */
   zoom: number;
   targetX: number;
   targetZ: number;
@@ -49,8 +53,19 @@ const MARGIN = 0.94;
 const TRANSITION_SECONDS = 0.9;
 const MIN_ELEVATION = 10 * DEG;
 const MAX_ELEVATION = 88 * DEG;
+const ZOOM: Record<ViewMode, readonly [number, number]> = { '3d': [0.3, 1.4], top: [0.25, 1.2] };
+/** A half turn (a flip to the other end) takes this long. */
+const TURN_SECONDS = 1.1;
 
-const HOME: Orbit = { azimuth: 0, elevation: 42 * DEG, zoom: 1, targetX: 0, targetZ: 0 };
+/** The 3D view's tilt from behind the head rail; steeper on a tall screen, where a low view would
+ * leave the table a thin strip across the middle. */
+const WIDE_ELEVATION = 42 * DEG;
+const TALL_ELEVATION = 60 * DEG;
+
+const HOME: Record<ViewMode, Orbit> = {
+  '3d': { azimuth: 0, elevation: WIDE_ELEVATION, zoom: 1, targetX: 0, targetZ: 0 },
+  top: { azimuth: 0, elevation: 90 * DEG, zoom: 1, targetX: 0, targetZ: 0 },
+};
 
 export class CameraRig {
   readonly perspective = new PerspectiveCamera(FOV, 1, 0.05, 60);
@@ -62,10 +77,20 @@ export class CameraRig {
   private halfX = 0.8;
   private halfZ = 1.45;
   private mode: ViewMode = '3d';
-  private goal: Orbit = { ...HOME };
-  private current: Orbit = { ...HOME };
+  private readonly goal: Record<ViewMode, Orbit> = {
+    '3d': { ...HOME['3d'] },
+    top: { ...HOME.top },
+  };
+  private readonly current: Record<ViewMode, Orbit> = {
+    '3d': { ...HOME['3d'] },
+    top: { ...HOME.top },
+  };
+  /** A timed, eased turn of a view round the table (a flip), where plain easing would whip. */
+  private turn: { mode: ViewMode; from: number; to: number; elapsed: number } | null = null;
   /** 0: fully 3D, 1: fully top; moves toward the mode. */
   private blend = 0;
+  /** Whether the player has moved the 3D view; until then it follows the screen's shape. */
+  private moved = false;
   private readonly corners: Vector3[] = [];
   private readonly forward = new Vector3();
   private readonly right = new Vector3();
@@ -83,10 +108,15 @@ export class CameraRig {
   }
 
   get moving(): boolean {
-    return this.blend !== (this.mode === 'top' ? 1 : 0) || !same(this.current, this.goal);
+    return (
+      this.blend !== (this.mode === 'top' ? 1 : 0) ||
+      this.turn !== null ||
+      !same(this.current['3d'], this.goal['3d']) ||
+      !same(this.current.top, this.goal.top)
+    );
   }
 
-  /** The table to keep in view: its outer half width and half length, and the rails' height. */
+  /** The table to keep in view: its outer half width and half length. */
   setTable(halfX: number, halfZ: number): void {
     this.halfX = halfX;
     this.halfZ = halfZ;
@@ -96,56 +126,145 @@ export class CameraRig {
         for (const y of [-0.17, 0.05]) this.corners.push(new Vector3(x, y, z));
       }
     }
+    for (const mode of ['3d', 'top'] as const) {
+      this.pan(mode, this.goal[mode].targetX, this.goal[mode].targetZ);
+    }
     this.apply();
   }
 
   setSize(width: number, height: number): void {
     this.width = Math.max(1, width);
     this.height = Math.max(1, height);
+    this.fitHome();
     this.apply();
   }
 
   /** Space the interface covers at each edge, in CSS pixels; the table is framed in the rest. */
   setInsets(insets: Insets): void {
+    const old = this.insets;
+    const unchanged = (['top', 'right', 'bottom', 'left'] as const).every(
+      (side) => Math.abs(insets[side] - old[side]) < 0.5,
+    );
+    if (unchanged) return;
     this.insets = { ...insets };
+    this.fitHome();
     this.apply();
   }
 
   setView(mode: ViewMode, immediate = false): void {
     this.mode = mode;
-    if (immediate) this.blend = mode === 'top' ? 1 : 0;
+    if (immediate) {
+      this.blend = mode === 'top' ? 1 : 0;
+      this.apply();
+    }
     this.requestRender();
   }
 
-  /** Back to the view from behind the head rail. */
+  /** Back to the view's home, from the end of the table it is looking from. */
   home(): void {
-    this.goal = { ...HOME };
+    this.stopTurn();
+    Object.assign(this.goal[this.mode], this.homeOf(this.mode), { azimuth: this.endAzimuth() });
+    if (this.mode === '3d') this.moved = false;
     this.requestRender();
   }
 
-  /** Turns and tilts the 3D view by these angles (radians). */
+  private homeOf(mode: ViewMode): Orbit {
+    if (mode === 'top') return HOME.top;
+    return { ...HOME['3d'], elevation: this.landscape ? WIDE_ELEVATION : TALL_ELEVATION };
+  }
+
+  /** Until the player moves the 3D view, its tilt follows the shape of the free area. */
+  private fitHome(): void {
+    if (this.moved) return;
+    const elevation = this.homeOf('3d').elevation;
+    this.goal['3d'].elevation = elevation;
+    this.current['3d'].elevation = elevation;
+  }
+
+  /** Turns the view half round, to look from the other end of the table. */
+  flip(): void {
+    const mode = this.mode;
+    const from = this.current[mode].azimuth;
+    const to = this.endAzimuth() + Math.PI;
+    this.goal[mode].azimuth = to;
+    this.turn = { mode, from, to, elapsed: 0 };
+    if (mode === '3d') this.moved = true;
+    this.requestRender();
+  }
+
+  /**
+   * Turns and tilts the view by these angles (radians); a larger azimuth turns the table clockwise
+   * on screen. The top view only turns.
+   */
   orbit(dAzimuth: number, dElevation: number): void {
-    this.goal.azimuth += dAzimuth;
-    this.goal.elevation = MathUtils.clamp(
-      this.goal.elevation + dElevation,
-      MIN_ELEVATION,
-      MAX_ELEVATION,
-    );
+    this.stopTurn();
+    const goal = this.goal[this.mode];
+    goal.azimuth += dAzimuth;
+    if (this.mode === '3d') this.moved = true;
+    if (this.mode === '3d') {
+      goal.elevation = MathUtils.clamp(goal.elevation + dElevation, MIN_ELEVATION, MAX_ELEVATION);
+    }
     this.requestRender();
   }
 
-  /** Zooms the 3D view by a factor (below 1 closer). */
+  /** Zooms the view by a factor (below 1 closer). */
   zoom(factor: number): void {
-    this.goal.zoom = MathUtils.clamp(this.goal.zoom * factor, 0.35, 1.35);
+    const goal = this.goal[this.mode];
+    const [min, max] = ZOOM[this.mode];
+    goal.zoom = MathUtils.clamp(goal.zoom * factor, min, max);
     this.requestRender();
+  }
+
+  /**
+   * Moves the point looked at by this much on the cloth (scene metres), at once rather than eased,
+   * so that a grabbed point of the table stays under the pointer. It stays over the table.
+   */
+  panBy(dx: number, dz: number): void {
+    const goal = this.goal[this.mode];
+    this.pan(this.mode, goal.targetX + dx, goal.targetZ + dz);
+    const current = this.current[this.mode];
+    current.targetX = goal.targetX;
+    current.targetZ = goal.targetZ;
+    this.apply();
+  }
+
+  private pan(mode: ViewMode, x: number, z: number): void {
+    const goal = this.goal[mode];
+    goal.targetX = MathUtils.clamp(x, -this.halfX, this.halfX);
+    goal.targetZ = MathUtils.clamp(z, -this.halfZ, this.halfZ);
+    this.requestRender();
+  }
+
+  /** The azimuth of the end of the table the view looks from (0 the head, π the foot). */
+  private endAzimuth(): number {
+    return Math.round(this.goal[this.mode].azimuth / Math.PI) * Math.PI;
+  }
+
+  /** The player takes over: a turn stops where it is. */
+  private stopTurn(): void {
+    if (!this.turn) return;
+    this.goal[this.turn.mode].azimuth = this.current[this.turn.mode].azimuth;
+    this.turn = null;
   }
 
   /** Per frame: eases toward the goal; true while still moving. */
   update(dt: number): boolean {
-    const k = 1 - Math.exp(-10 * dt);
-    for (const key of ['azimuth', 'elevation', 'zoom', 'targetX', 'targetZ'] as const) {
-      this.current[key] += (this.goal[key] - this.current[key]) * k;
-      if (Math.abs(this.goal[key] - this.current[key]) < 1e-5) this.current[key] = this.goal[key];
+    const k = 1 - Math.exp(-12 * dt);
+    const turn = this.turn;
+    if (turn) {
+      turn.elapsed += dt;
+      const t = Math.min(1, turn.elapsed / TURN_SECONDS);
+      this.current[turn.mode].azimuth = turn.from + (turn.to - turn.from) * smooth(t);
+      if (t >= 1) this.turn = null;
+    }
+    for (const mode of ['3d', 'top'] as const) {
+      const current = this.current[mode];
+      const goal = this.goal[mode];
+      for (const key of ['azimuth', 'elevation', 'zoom', 'targetX', 'targetZ'] as const) {
+        if (key === 'azimuth' && turn?.mode === mode) continue;
+        current[key] += (goal[key] - current[key]) * k;
+        if (Math.abs(goal[key] - current[key]) < 1e-5) current[key] = goal[key];
+      }
     }
     const target = this.mode === 'top' ? 1 : 0;
     if (this.blend !== target) {
@@ -172,15 +291,18 @@ export class CameraRig {
     const shiftX = -(left - right) / 2;
     const shiftY = -(top - bottom) / 2;
 
-    // The top view's orbit: straight down, the screen's up along the table (portrait) or across.
-    const topAzimuth = this.landscape ? 90 * DEG : 0;
+    // The top view: straight down, the screen's up along the table (portrait) or across, then
+    // turned as far as the player turned it.
+    const o3 = this.current['3d'];
+    const oT = this.current.top;
+    const topAzimuth = (this.landscape ? 90 * DEG : 0) + oT.azimuth;
     const t = smooth(this.blend);
-    const azimuth = mixAngle(this.current.azimuth, topAzimuth, t);
-    const elevation = this.current.elevation + (90 * DEG - 1e-4 - this.current.elevation) * t;
+    const azimuth = mixAngle(o3.azimuth, topAzimuth, t);
+    const elevation = o3.elevation + (90 * DEG - 1e-4 - o3.elevation) * t;
     const fov = FOV + (NEAR_ORTHO_FOV - FOV) * t;
-    const zoom = this.current.zoom + (1 - this.current.zoom) * t;
-    const tx = this.current.targetX * (1 - t);
-    const tz = this.current.targetZ * (1 - t);
+    const zoom = o3.zoom + (oT.zoom - o3.zoom) * t;
+    const tx = o3.targetX + (oT.targetX - o3.targetX) * t;
+    const tz = o3.targetZ + (oT.targetZ - o3.targetZ) * t;
 
     const tanHalf = Math.tan((fov * DEG) / 2);
     const distance = this.fitDistance(azimuth, elevation, tanHalf, freeW, freeH) * zoom;
@@ -201,21 +323,24 @@ export class CameraRig {
     camera.setViewOffset(this.width, this.height, shiftX, shiftY, this.width, this.height);
     camera.updateProjectionMatrix();
 
-    // The orthographic camera, framed the same way.
+    // The orthographic camera, framed the same way: the table's extent along the screen's right
+    // and up directions, fitted to the free area.
     const ortho = this.ortho;
-    const landscape = this.landscape;
-    const along = landscape ? this.halfZ : this.halfX; // extent across the screen
-    const across = landscape ? this.halfX : this.halfZ; // extent up the screen
-    const scale = Math.min((freeW * MARGIN) / (2 * along), (freeH * MARGIN) / (2 * across));
+    const ux = -Math.sin(topAzimuth);
+    const uz = -Math.cos(topAzimuth);
+    const acrossScreen = Math.abs(this.halfX * uz) + Math.abs(this.halfZ * ux);
+    const upScreen = Math.abs(this.halfX * ux) + Math.abs(this.halfZ * uz);
+    const scale =
+      Math.min((freeW * MARGIN) / (2 * acrossScreen), (freeH * MARGIN) / (2 * upScreen)) / oT.zoom;
     const halfH = this.height / (2 * scale);
     const halfW = halfH * (this.width / this.height);
     ortho.left = -halfW;
     ortho.right = halfW;
     ortho.top = halfH;
     ortho.bottom = -halfH;
-    ortho.position.set(0, 10, 0);
-    ortho.up.set(landscape ? -1 : 0, 0, landscape ? 0 : -1);
-    ortho.lookAt(0, 0, 0);
+    ortho.position.set(oT.targetX, 10, oT.targetZ);
+    ortho.up.set(ux, 0, uz);
+    ortho.lookAt(oT.targetX, 0, oT.targetZ);
     ortho.setViewOffset(this.width, this.height, shiftX, shiftY, this.width, this.height);
     ortho.updateProjectionMatrix();
     this.requestRender();
