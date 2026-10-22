@@ -20,6 +20,7 @@ source (a search result, a forum post, a retailer listing whose page could not b
 | 7 | AZBilliards forum threads on table sizes, e.g. https://forums.azbilliards.com/goto/post?id=2191806 and https://forums.azbilliards.com/goto/post?id=4579221; https://www.dimensions.com/element/7-foot-billiards-pool-table | 7-ft bar-box playing surface | Search results |
 | 8 | Retailer listings for the Brunswick Gold Crown VI (billiardfactory.com, johnsonfitness.com) | Overall size, slate and rail heights, leg positions of a 9-ft table | Search-result text only; both pages refuse automated readers (HTTP 403) |
 | 9 | Wikimedia Commons photographs (section 7) | Look of balls, cloth, rails, pockets, legs | Downloaded to `docs/reference/` (gitignored) and viewed |
+| 10 | Dr. Dave Alciatore, technical proof TP B.6, *CB table lengths of travel for different speeds, accounting for rail rebound and drag losses* (revised 2023-12-03), https://billiards.colostate.edu/technical_proofs/new/TP_B-6.pdf | Table lengths a rolling ball travels from touch to power speed; typical shot speeds in mph | The PDF read in full (4 pages) |
 
 ## 2. The table
 
@@ -56,7 +57,7 @@ surface measured between the cushion noses**, not the outside of the frame.
 | Profile | triangular rubber, cloth-covered | [S] 1 §7 |
 | Width, featherstrip to nose | 1⅞–2 in (the PDF prints "[4.76 cm] and 2 inches [5.40 cm]"; 2 in is 5.08 cm, so the 5.40 is a misprint) | [S] 1 §7; we use 2 in [A] |
 | Nose height above the bed | 63½ % of ball diameter (62½–64½ %) → 1.429 in = 36.29 mm | [S] 1 §7 |
-| Speed | a centre-ball stroke from the head spot through the foot spot travels 4–4½ table lengths | [S] 1 §8 — used to tune the cushion restitution check in the physics tests |
+| Speed | a centre-ball shot with a level cue and a firm stroke, from the head spot through the foot spot, travels 4–4½ table lengths | [S] 1 §8; "firm" is read as a cue ball leaving at 14–16 mph [A], after source 10's speeds |
 | Rubber profile names (K66, K55) | K66 is the usual home and commercial profile | [s] forum and retailer results; not needed for the model |
 
 ### 2.4 Pockets
@@ -146,9 +147,10 @@ listed with where it comes from; `docs/physics.md` describes the model itself.
 | Sliding → rolling | the contact slip falls at (7/2)μs·g; a stun shot rolls on at 5/7 of its speed | [S] 4, standard result |
 | Cue strike | instantaneous point impact on the cue ball, with squirt (the cue ball's deflection for side spin) | [S] 3, after source 5's TP A-30 and A-31 |
 
-Two physical facts the tests check against, independent of pooltool: a centre-ball stroke on a
-WPA table travels 4–4½ table lengths (source 1 §8), and a stun shot reaches rolling at 5/7 of its
-initial speed.
+Physical facts the tests check against, independent of pooltool: a firm centre-ball stroke on a
+WPA table travels 4–4½ table lengths (source 1 §8); a rolling ball travels about as far as source
+10 estimates at each speed (`tests/unit/physics/calibration.test.ts`, results in `docs/physics.md`);
+and a stun shot reaches rolling at 5/7 of its initial speed.
 
 ## 6. Rules
 

@@ -100,6 +100,25 @@ for the rounded lips, circles for the pocket cuts), placed from the WPA measurem
   apart (restitution and throw close the ideal 90°); a rolling half-ball hit deflects the cue ball
   near 30°; draw comes back, follow goes on; side spin squirts away from the tip.
   (`tests/unit/physics/simulate.test.ts`)
+- **Against published figures for the table's speed.** Dr. Dave's technical proof TP B.6 estimates
+  how far a rolling ball travels on a 9-ft table, rail losses included, with every rebound killing
+  the spin (stun) at a rebound coefficient of 0.7. Rolling from the head rail, the translation's
+  ball runs as far as his estimate at touch speed and up to a fifth further at power speed, as a
+  model that keeps some roll off the rail should:
+
+  | Speed | Dr. Dave (table lengths) | Pool |
+  |---|---|---|
+  | touch, 1.5 mph | 0.90 | 0.90 |
+  | slow, 3 mph | 1.68 | 1.83 |
+  | lag, 3.465 mph | 2.00 | 2.04 |
+  | medium, 7 mph | 3.01 | 3.15 |
+  | fast, 12 mph | 3.69 | 4.17 |
+  | power, 20 mph | 4.72 | 5.59 |
+
+  The WPA's own test (a firm centre-ball shot from the head spot through the foot spot travels 4 to
+  4½ table lengths) is met with the cue ball leaving at 14–16 mph, reading "firm" as between fast
+  and power. pooltool's default cloth and cushions therefore play like a WPA table, and no parameter
+  was changed. (`tests/unit/physics/calibration.test.ts`)
 - **Invariants** over 300 random shots: every shot ends, momentum is conserved in every ball-ball
   collision, the total energy never rises at an event, balls never overlap, and every ball ends on
   the cloth (or in a pocket's throat) or pocketed.
