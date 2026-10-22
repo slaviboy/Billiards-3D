@@ -129,10 +129,11 @@ async function accept(page: Page, title: string, name: string, button: string) {
 }
 
 /** The host asks for an online match (the host breaking first) and returns the link. */
-async function createLink(page: Page): Promise<string> {
+async function createLink(page: Page, shotClock = 'Off'): Promise<string> {
   await page.locator('.mode-card[data-mode="online"]').click();
   const terms = page.getByRole('dialog', { name: 'Play a friend online' });
   await terms.getByRole('radio', { name: 'You', exact: true }).click();
+  await terms.getByRole('radio', { name: shotClock, exact: true }).click();
   const before = await network(page);
   await terms.getByRole('button', { name: 'Continue' }).click();
   // Nothing new may connect while the warning is up.
@@ -327,4 +328,26 @@ test('players whose clocks are wrong still find each other', async ({ browser })
   await joinAs(guest, host);
   expect((await view(guest)).hash).toBe((await view(host)).hash);
   for (const side of [host, guest]) expect(side.errors).toEqual([]);
+});
+
+test('a shot clock that runs out passes the break, the same on both sides', async ({ browser }) => {
+  const host = await player(browser);
+  const link = await createLink(host.page, '30 s');
+  const guest = await player(browser, link);
+  await joinAs(guest, host);
+  // Ana's clock runs on both cards while she does nothing; her own game calls time after 30 s.
+  for (const side of [host, guest]) {
+    await expect(side.page.getByTestId('player-0')).toHaveClass(/active/);
+  }
+  for (const side of [host, guest]) {
+    await expect(side.chip).toHaveAttribute('data-turn', '1', { timeout: 60_000 });
+  }
+  expect(await view(host)).toMatchObject({ phase: 'break', shot: 0 });
+  expect((await view(guest)).hash).toBe((await view(host)).hash);
+  await expect(guest.page.locator('.toast', { hasText: 'Time ran out for Ana' })).toBeVisible();
+  // Nobody lost the match over it: both are still playing.
+  for (const side of [host, guest]) {
+    await expect(side.chip).toHaveAttribute('data-status', 'playing');
+    expect(side.errors).toEqual([]);
+  }
 });
