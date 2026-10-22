@@ -34,6 +34,7 @@ import { BallSet } from '../scene/BallSet.ts';
 import { AimGuide } from '../scene/AimGuide.ts';
 import { CameraRig, type Insets, type ViewMode } from '../scene/CameraRig.ts';
 import { CueView } from '../scene/CueView.ts';
+import { InHandMarker } from '../scene/InHandMarker.ts';
 import { PoolScene, type Quality } from '../scene/PoolScene.ts';
 import { ShotPlayer } from '../scene/ShotPlayer.ts';
 import { TableView } from '../scene/TableView.ts';
@@ -63,6 +64,7 @@ export class App {
   readonly balls = new BallSet();
   readonly cue: CueView;
   readonly guide = new AimGuide();
+  readonly inHandMarker = new InHandMarker();
   readonly player: ShotPlayer;
   readonly match: MatchController;
   readonly input: TableInput;
@@ -99,7 +101,13 @@ export class App {
     this.scene = new PoolScene(root, this.rig.camera, quality);
     this.tableView = new TableView(baseUrl);
     this.cue = new CueView(baseUrl);
-    this.scene.scene.add(this.tableView.group, this.balls.group, this.cue.group, this.guide.group);
+    this.scene.scene.add(
+      this.tableView.group,
+      this.balls.group,
+      this.cue.group,
+      this.guide.group,
+      this.inHandMarker.group,
+    );
     this.match = new MatchController({
       mode: 'practice',
       size: s.table,
@@ -332,7 +340,22 @@ export class App {
   refresh(): void {
     this.updateCue();
     this.updateGuide();
+    this.updateInHand();
     this.scene.requestRender();
+  }
+
+  /** The ring round a cue ball in hand, and the head string while it must stay behind it. */
+  private updateInHand(): void {
+    const where = this.match.inHand();
+    const cue = this.match.current.balls[0]!;
+    if (!where || !this.canAct() || cue.s === Motion.Pocketed) {
+      this.inHandMarker.hide();
+      return;
+    }
+    const { W, L } = this.match.table.spec;
+    toScene(cue.rx, cue.ry, 0, W, L, this.out);
+    const line = where === 'kitchen' ? { z: L / 2 - this.match.table.headString, width: W } : null;
+    this.inHandMarker.show(this.out.x, this.out.z, line);
   }
 
   private updateGuide(): void {
