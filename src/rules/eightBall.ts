@@ -109,7 +109,7 @@ export function judge(
 
   const eight = facts.pocketed.find((p) => p.ball === 8);
   if (eight) {
-    // The shooter was entitled to the 8 if hitting it first was legal for him.
+    // The shooter was entitled to the 8 if hitting it first was legal for them.
     const onEight = targets.includes(8);
     const end = fouls.length
       ? 'eightFoul'
@@ -166,7 +166,7 @@ function judgeBreak(state: RackState, facts: ShotFacts): Judged {
   const base = { fouls, pocketed: objects, assigned: null, spotEight: false, legalBreak: legal };
 
   if (!legal) {
-    // 4.3(d): the incoming player chooses; if he accepts after a scratch, the cue ball is in hand
+    // 4.3(d): the incoming player chooses; if they accept after a scratch, the cue ball is in hand
     // above the head string.
     return {
       state: {

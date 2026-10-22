@@ -196,7 +196,7 @@ describe('open table and groups (4.4, 4.5)', () => {
     expect(safe.state).toMatchObject({ turn: 1, groups: [0, 0], inHand: 'none' });
   });
 
-  it('keeps the shooter at the table only for a ball of his own group', () => {
+  it('keeps the shooter at the table only for a ball of their own group', () => {
     const state = playing({ groups: [1, 2] });
     expect(
       judge(state, facts({ firstContact: 2, pocketed: pockets([2, 0]) }), plain, all()).state.turn,

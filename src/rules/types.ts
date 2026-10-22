@@ -55,9 +55,9 @@ export type Phase = 'break' | 'play' | 'decision' | 'over';
 /** How a rack ended. */
 export type RackEnd =
   | 'eight' // the winner pocketed the 8 legally
-  | 'eightEarly' // the loser pocketed the 8 before clearing his group
+  | 'eightEarly' // the loser pocketed the 8 before clearing their group
   | 'eightFoul' // the loser pocketed the 8 and fouled
-  | 'eightPocket' // the loser pocketed the 8 in a pocket he did not call
+  | 'eightPocket' // the loser pocketed the 8 in a pocket they did not call
   | 'concede';
 
 export interface RackState {

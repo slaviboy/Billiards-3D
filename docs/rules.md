@@ -23,19 +23,19 @@ each player's game judges every shot itself from its own simulation.
   - Any other foul on the break (a scratch, for instance): the other player has the cue ball in hand
     above the head string.
 - **Open table.** Until the groups are assigned, any ball but the 8 may be hit first. If a group
-  has been cleared entirely, a player may hit the 8 first, as if that group were his.
+  has been cleared entirely, a player may hit the 8 first, as if that group were theirs.
 - **Groups.** The first ball a player pockets legally after the break makes its group (solids 1–7
-  or stripes 9–15) his, and the other group his opponent's.
-- **Continuing.** A player stays at the table while he legally pockets balls of his group. A safety
-  ends his turn whatever falls.
+  or stripes 9–15) theirs, and the other group their opponent's.
+- **Continuing.** A player stays at the table while they legally pocket balls of their group. A
+  safety ends their turn whatever falls.
 - **Fouls** pass the table to the opponent, who takes the cue ball in hand anywhere: a scratch,
   hitting the wrong ball first (or none), no ball pocketed and no ball driven to a rail after the
   first contact, playing from above the head string without crossing it or first hitting a ball on
   or beyond it, and letting the shot clock run out. Balls pocketed on a foul stay down. There is no
   three-foul rule in 8-ball.
-- **The 8.** Once his group is cleared a player shoots the 8, calling its pocket. He wins the rack by
-  pocketing it legally in that pocket, and loses it by pocketing it with a foul, before his group is
-  cleared (including on the same shot as his last ball), or in another pocket.
+- **The 8.** Once their group is cleared a player shoots the 8, calling its pocket. They win the rack
+  by pocketing it legally in that pocket, and lose it by pocketing it with a foul, before their group
+  is cleared (including on the same shot as their last ball), or in another pocket.
 - **Matches** are races to a number of racks; the break alternates.
 
 ## Deviations from the WPA rules
