@@ -68,7 +68,7 @@ export class App {
   readonly player: ShotPlayer;
   readonly match: MatchController;
   readonly input: TableInput;
-  readonly sound = new SoundManager();
+  readonly sound: SoundManager;
   readonly ready: Promise<void>;
   aim: Aim = { heading: Math.PI / 2, power: 0.45, a: 0, b: 0, elevation: 3 };
   calledPocket: PocketId | null = null;
@@ -97,6 +97,11 @@ export class App {
     quality: Quality,
   ) {
     const s = settings.get();
+    this.sound = new SoundManager(undefined, undefined, async (name) => {
+      const response = await fetch(`${baseUrl}sounds/${name}.mp3`);
+      if (!response.ok) throw new Error(`no sound ${name}`);
+      return response.arrayBuffer();
+    });
     this.rig = new CameraRig(() => this.scene?.requestRender());
     this.scene = new PoolScene(root, this.rig.camera, quality);
     this.tableView = new TableView(baseUrl);
@@ -202,6 +207,7 @@ export class App {
     this.localSeats = localSeats;
     this.match.start(setup);
     await this.showMatch();
+    this.sound.racked();
   }
 
   /** Shows the match's table and balls as they are now. */

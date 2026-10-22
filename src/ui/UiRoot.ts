@@ -364,6 +364,7 @@ export class UiRoot {
     if (!kind) return;
     const choice = await decisionDialog(kind, state.setup.names[state.rack.turn], CHOICES[kind]);
     this.app.match.decide(choice);
+    if (choice !== 'accept' && choice !== 'spot') this.app.sound.racked();
     this.app.showBalls();
     this.app.aimAtRack();
     this.render();
@@ -410,6 +411,7 @@ export class UiRoot {
     }
     if (state.rack.phase !== 'over') return;
     this.app.match.nextRack();
+    this.app.sound.racked();
     this.app.showBalls();
     this.app.aimAtRack();
     this.clock = { key: '', used: 0 };

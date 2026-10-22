@@ -152,7 +152,7 @@ export function scanText(text: string, { secrets = true } = {}): Finding[] {
 }
 
 const BINARY_EXTENSIONS =
-  /\.(?:png|jpe?g|gif|webp|ico|woff2?|ttf|otf|mp4|webm|zip|gz|pdf|glb|blend|bin|wasm)$/i;
+  /\.(?:png|jpe?g|gif|webp|ico|woff2?|ttf|otf|mp4|webm|zip|gz|pdf|glb|blend|bin|wasm|mp3|ogg|wav)$/i;
 
 /** Whether a file is read as bytes rather than text. */
 export function isBinary(name: string, data: Buffer): boolean {

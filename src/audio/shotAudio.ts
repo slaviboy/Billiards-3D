@@ -65,11 +65,11 @@ export function hitFor(event: PhysicsEvent, cueSpeed: number): Hit | null {
 
 /** How long each sound rings, seconds (for counting the voices sounding). */
 export const DURATION: Record<Voice, number> = {
-  cue: 0.12,
-  ball: 0.09,
-  cushion: 0.16,
-  jaw: 0.14,
-  pocket: 0.45,
+  cue: 0.2,
+  ball: 0.18,
+  cushion: 0.26,
+  jaw: 0.21,
+  pocket: 0.75,
 };
 /** Contacts of one kind closer together than this are heard as one, seconds. */
 export const MERGE_WINDOW = 0.012;

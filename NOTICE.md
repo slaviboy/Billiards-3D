@@ -51,5 +51,27 @@ Grandmaster 3D (https://github.com/slaviboy/Grandmaster-3D), under the same lice
 
 The table, cue and ball set were modelled for this project with the Blender scripts in
 `blender/scripts/`, from published equipment specifications. The ball markings, cloth and wood are
-generated procedurally. The icons and sounds (synthesised with Web Audio) are original. No
-third-party models, textures, fonts or sound files are included.
+generated procedurally. The icons, the rolling sound and the game's notes (synthesised with Web
+Audio) are original. No third-party models, textures or fonts are included.
+
+## Sound effects — Pixabay Content License
+
+The hits in `public/sounds/` are short excerpts cut from recordings published on Pixabay under
+the Pixabay Content License (https://pixabay.com/service/license-summary/), which allows them to be
+used and adapted for free, without attribution; they are credited here all the same. Each excerpt
+is a single hit, cut out, aligned to its attack, faded, normalised and re-encoded for the game
+(`docs/sounds.md` lists every cut). These files are under the Pixabay Content License, not the
+GPL.
+
+- *Billiard Sound 01*, *02*, *03*, *05* and *6*, *Billiard Hole*, *Billiard Hole 2* and *Billiard
+  Setup Sound*, recorded by Alex_Jauk:
+  https://pixabay.com/sound-effects/film-special-effects-billiard-sound-01-288421/,
+  https://pixabay.com/sound-effects/film-special-effects-billiard-sound-02-288423/,
+  https://pixabay.com/sound-effects/film-special-effects-billiard-sound-03-288424/,
+  https://pixabay.com/sound-effects/film-special-effects-billiard-sound-05-288416/,
+  https://pixabay.com/sound-effects/film-special-effects-billiard-sound-6-288417/,
+  https://pixabay.com/sound-effects/film-special-effects-billiard-hole-288419/,
+  https://pixabay.com/sound-effects/film-special-effects-billiard-hole-2-288420/ and
+  https://pixabay.com/sound-effects/film-special-effects-billiard-setup-sound-288418/
+- *pool_break*, published by freesound_community:
+  https://pixabay.com/sound-effects/film-special-effects-pool-break-105353/
