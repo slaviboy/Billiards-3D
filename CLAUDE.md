@@ -73,3 +73,9 @@ machine is shared with other work: never start the whole suite, or a second run,
   disconnects. Only `src/net/PeerLink.ts` touches Trystero or a peer connection; never put network
   objects on `window` or log addresses, candidates or SDP. Every online game starts with the 18+
   and IP warning, its box unticked, before anything connects.
+- **Online, both tables stay alike.** A shot travels as the integers both simulations start from,
+  with the fingerprint of the table it led to; a difference stops play until the host's table is
+  taken (`docs/protocol.md`). The session (`src/net/`) knows no game; 8-ball plugs in through
+  `src/game/GamePort.ts`, and the local player's actions reach it from `MatchController.onAction`,
+  whatever made them. The build id (`scripts/build-id.ts`) fingerprints the code both players must
+  share, so players on different builds are asked to reload rather than play on.
