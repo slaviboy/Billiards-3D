@@ -14,6 +14,8 @@
 // positions are the match's; the meshes only follow.
 
 import { Vector3 } from 'three';
+import { hitFor } from '../audio/shotAudio.ts';
+import { SoundManager } from '../audio/SoundManager.ts';
 import type { Store } from '../core/Store.ts';
 import {
   MatchController,
@@ -63,6 +65,7 @@ export class App {
   readonly player: ShotPlayer;
   readonly match: MatchController;
   readonly input: TableInput;
+  readonly sound = new SoundManager();
   readonly ready: Promise<void>;
   aim: Aim = { heading: Math.PI / 2, power: 0.45, a: 0, b: 0, elevation: 3 };
   calledPocket: PocketId | null = null;
@@ -73,6 +76,8 @@ export class App {
   onEvent: (event: PhysicsEvent) => void = () => {};
   private busy = false;
   private pull = 0;
+  /** The cue's speed in the shot playing (m/s), for the sound of the tip. */
+  private strikeSpeed = 0;
   private readonly ballCentre = new Vector3();
   private readonly projected = new Vector3();
   private readonly out = { x: 0, y: 0, z: 0 };
@@ -99,7 +104,11 @@ export class App {
       seed: 'welcome',
       firstBreak: 0,
     });
-    this.player = new ShotPlayer(this.balls, this.playerTable(), (e) => this.onEvent(e));
+    this.player = new ShotPlayer(this.balls, this.playerTable(), (e, ago) => {
+      const hit = hitFor(e, this.strikeSpeed);
+      if (hit) this.sound.hit(hit, ago);
+      this.onEvent(e);
+    });
     this.scene.onResize((w, h) => {
       this.rig.setSize(w, h);
       this.guide.setResolution(w, h);
@@ -108,6 +117,7 @@ export class App {
       const moving = this.rig.update(dt);
       this.scene.camera = this.rig.camera;
       const playing = this.player.update(dt);
+      this.sound.setRolling(this.player.rollingSpeed);
       return moving || playing;
     });
     this.input = new TableInput(this.scene.renderer.domElement, {
@@ -142,6 +152,7 @@ export class App {
     });
     settings.subscribe((next) => {
       if (next.view !== this.rig.view) this.rig.setView(next.view);
+      this.sound.configure(next.sound, next.volume);
       this.guide.setLength(next.guide);
       this.player.speed = next.speed;
       this.tableView.setCloth(next.cloth);
@@ -262,6 +273,7 @@ export class App {
     this.busy = true;
     try {
       const result = this.match.shoot(code, intent, place);
+      this.strikeSpeed = code.speed / 1000;
       this.cue.visible = false;
       this.guide.visible = false;
       this.pull = 0;

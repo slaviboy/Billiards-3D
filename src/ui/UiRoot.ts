@@ -168,6 +168,7 @@ export class UiRoot {
       called: () => this.app.calledPocket,
       call: (pocket) => {
         this.app.calledPocket = pocket;
+        this.app.sound.cue('call');
         this.render();
       },
       toClient: (x, y) => this.app.toClient(x, y),
@@ -339,6 +340,7 @@ export class UiRoot {
     this.render();
     if (!ruling) return;
     for (const foul of ruling.fouls) this.toasts.show(FOUL_TEXT[foul], 'foul');
+    if (ruling.fouls.length > 0) this.app.sound.cue('foul');
     if (ruling.assigned) {
       const { seat, group } = ruling.assigned;
       this.toasts.show(`${names[seat]} takes the ${GROUP_NAME[group]}`, 'good');
@@ -381,6 +383,7 @@ export class UiRoot {
       concede: `${loser} conceded the rack.`,
     }[rack.end ?? 'concede'];
     const matchOver = state.winner !== null;
+    this.app.sound.cue(matchOver ? 'match' : 'rack');
     const choice = await resultDialog({
       title: matchOver ? `${winner} wins the match` : `${winner} wins the rack`,
       detail: reason,
@@ -528,6 +531,7 @@ export class UiRoot {
       this.app.match.timeOut();
       this.app.showBalls();
       this.toasts.show(FOUL_TEXT.shotClock, 'foul');
+      this.app.sound.cue('foul');
       this.toasts.show(`${state.setup.names[this.app.match.current.rack.turn]}: ball in hand`);
     }
     this.renderClock(this.app.match.current);

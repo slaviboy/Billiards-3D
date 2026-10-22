@@ -63,12 +63,17 @@ export class ShotPlayer {
   private readonly spin = { x: 0, y: 0, z: 0 };
   /** Balls already resting in each pocket (for stacking the next one). */
   private pocketCounts = [0, 0, 0, 0, 0, 0];
+  /** The balls' speeds on the cloth added up at the moment shown, m/s (for the rolling sound). */
+  rollingSpeed = 0;
 
   constructor(
     private readonly balls: BallSet,
     private table: PlayerTable,
-    /** Called as playback passes each event, for sounds and effects. */
-    private readonly onEvent: (event: PhysicsEvent) => void = () => {},
+    /**
+     * Called as playback passes each event, for sounds and effects, with how long before the
+     * moment now shown it happened (seconds of real time).
+     */
+    private readonly onEvent: (event: PhysicsEvent, ago: number) => void = () => {},
   ) {}
 
   setTable(table: PlayerTable): void {
@@ -158,9 +163,10 @@ export class ShotPlayer {
       timeline.events[this.nextEvent]!.t <= target
     ) {
       const event = timeline.events[this.nextEvent++]!;
-      if (animate) this.onEvent(event);
+      if (animate) this.onEvent(event, (target - event.t) / this.speed);
     }
     let dropping = false;
+    let rolling = 0;
     for (let n = 0; n < timeline.segments.length; n++) {
       const drop = this.drops.get(n);
       if (drop && target >= drop.t) {
@@ -169,10 +175,12 @@ export class ShotPlayer {
       }
       sampleInto(timeline, n, Math.min(target, end), this.sample, POOL_BALL);
       if (this.sample.s === Motion.Pocketed) continue;
+      rolling += Math.hypot(this.sample.vx, this.sample.vy);
       this.balls.setVisible(n, true);
       toScene(this.sample.rx, this.sample.ry, this.sample.rz, this.table.W, this.table.L, this.out);
       this.balls.place(n, this.out.x, this.out.y, this.out.z);
     }
+    this.rollingSpeed = animate && target < end ? rolling : 0;
     if (target >= end && !dropping) {
       this.timeline = null;
       const done = this.done;
