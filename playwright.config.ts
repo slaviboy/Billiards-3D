@@ -12,8 +12,12 @@
 // End-to-end tests against the production build.
 // Run one file at a time, e.g.: npx playwright test tests/e2e/boot.spec.ts
 // (builds first; needs a WebGL-capable browser, so it runs locally, not in CI).
+// POOL_E2E_PORT picks another port, so that two working copies can test side by side without one
+// reusing the other's server.
 
 import { defineConfig, devices } from '@playwright/test';
+
+const port = Number(process.env.POOL_E2E_PORT ?? 4174);
 
 export default defineConfig({
   testDir: 'tests/e2e',
@@ -23,7 +27,7 @@ export default defineConfig({
   workers: 1,
   reporter: [['list']],
   use: {
-    baseURL: 'http://localhost:4174/',
+    baseURL: `http://localhost:${port}/`,
     viewport: { width: 1174, height: 880 },
     deviceScaleFactor: 1,
     launchOptions: { args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] },
@@ -35,8 +39,8 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'npm run build && npx vite preview --port 4174 --strictPort',
-    url: 'http://localhost:4174/',
+    command: `npm run build && npx vite preview --port ${port} --strictPort`,
+    url: `http://localhost:${port}/`,
     reuseExistingServer: true,
     timeout: 180_000,
   },
