@@ -106,7 +106,7 @@ surface measured between the cushion noses**, not the outside of the frame.
 | Surface | unpolished, unwaxed in play; it still shows a sharp specular highlight (photos 7.1, 7.2) | [S] 1 §16, observation |
 | Number disc size | about 0.41 × ball diameter across (angular radius about 24°), with a thin dark ring on tournament sets | [A] measured on photo 7.1 |
 | Digit height | about 0.6 × the disc diameter, bold rounded sans-serif | [A] measured on photo 7.1 |
-| Stripe band | colour between about ±32° of latitude: the band is about 0.53 × the diameter tall seen from the side | [A] measured on photos 7.1 and 7.2 |
+| Stripe band | colour between about ±35° of latitude: the band is about 0.57 × the diameter tall seen from the side | [A] measured on photos 7.1 and 7.2 |
 | Colours as rendered (sRGB) | 1 #f2b400, 2 #1d46a8, 3 #d0281f, 4 #3d2b86, 5 #ee6e17, 6 #0e6a3c, 7 #7c1d24, 8 #141414, white #f3efe2 | [A] sampled from photos 7.1 and 7.2 and adjusted for lighting; to be checked in the reference renders |
 
 The numbers and stripes are drawn on the sphere itself (a shader working from the ball's own

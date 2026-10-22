@@ -20,3 +20,4 @@ tools/**/.venv/
 .idea/
 .vscode/
 .claude/settings.local.json
+blender/textures/
