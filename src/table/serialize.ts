@@ -64,5 +64,22 @@ export function tableGeometryJson(size: TableSize): object {
     sights: table.sights.map(xy),
     headString: table.headString,
     spots: { head: xy(table.headSpot), center: xy(table.centerSpot), foot: xy(table.footSpot) },
+    // Exactly what the simulation uses, for the pooltool reference runs
+    // (tools/pooltool-fixtures/generate.py).
+    physics: {
+      height: spec.noseHeight,
+      linear: table.physics.linear.map((s) => ({
+        id: s.id,
+        p1: [s.p1x, s.p1y],
+        p2: [s.p2x, s.p2y],
+        normal: [s.nx, s.ny],
+      })),
+      circular: table.physics.circular.map((c) => ({
+        id: c.id,
+        center: [c.cx, c.cy],
+        radius: c.r,
+      })),
+      pockets: table.physics.pockets.map((p) => ({ id: p.id, center: [p.cx, p.cy], radius: p.r })),
+    },
   };
 }
