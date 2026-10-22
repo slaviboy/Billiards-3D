@@ -188,6 +188,8 @@ export class UiRoot {
       if (event.detail > 0) (event.target as HTMLElement).closest('button')?.blur();
     });
 
+    app.onQualityLowered = (fps) =>
+      this.toasts.show(`Graphics lowered for smoother play (it ran at ${fps} frames a second)`);
     app.match.state.subscribe(() => this.render());
     app.settings.subscribe((settings) => {
       this.element.classList.toggle('left-handed', settings.leftHanded);

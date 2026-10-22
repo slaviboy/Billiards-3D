@@ -57,6 +57,7 @@ export class PoolScene {
   private readonly timer = new Timer();
   private dirty = true;
   private readonly resizeObserver: ResizeObserver;
+  private currentQuality: Quality;
 
   constructor(
     private readonly container: HTMLElement,
@@ -64,6 +65,7 @@ export class PoolScene {
     quality: Quality,
   ) {
     this.camera = camera;
+    this.currentQuality = quality;
     this.renderer = new WebGLRenderer({
       antialias: quality === 'high',
       powerPreference: 'high-performance',
@@ -157,6 +159,30 @@ export class PoolScene {
 
   get height(): number {
     return Math.max(1, this.container.clientHeight);
+  }
+
+  get quality(): Quality {
+    return this.currentQuality;
+  }
+
+  /**
+   * Drops to the low quality while running, for a device too slow for the high one: no shadows and
+   * one pixel per CSS pixel. (Antialiasing stays as the renderer was made.)
+   */
+  lowerQuality(): void {
+    if (this.currentQuality === 'low') return;
+    this.currentQuality = 'low';
+    this.renderer.shadowMap.enabled = false;
+    this.shadowLight.castShadow = false;
+    this.renderer.setPixelRatio(1);
+    // The materials were compiled with shadows; they must be compiled again without.
+    this.scene.traverse((object) => {
+      const material = (object as Mesh).material;
+      for (const m of Array.isArray(material) ? material : material ? [material] : []) {
+        m.needsUpdate = true;
+      }
+    });
+    this.resize();
   }
 
   /** Renders a frame now, regardless of the dirty flag (used before screenshots). */

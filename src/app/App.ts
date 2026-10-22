@@ -16,6 +16,7 @@
 import { Vector3 } from 'three';
 import { hitFor } from '../audio/shotAudio.ts';
 import { SoundManager } from '../audio/SoundManager.ts';
+import { FrameMonitor } from '../core/FrameMonitor.ts';
 import type { Store } from '../core/Store.ts';
 import {
   MatchController,
@@ -72,10 +73,14 @@ export class App {
   safety = false;
   /** Seats played on this device: both on one device, one online. */
   localSeats: readonly Seat[] = [0, 1];
+  /** Called when the graphics were lowered because frames ran slow, with the frame rate seen. */
+  onQualityLowered: (fps: number) => void = () => {};
   /** Called as the shot's playback passes each event (sounds). */
   onEvent: (event: PhysicsEvent) => void = () => {};
   private busy = false;
   private pull = 0;
+  /** Frame times while something moves, to spot a device too slow for the high quality. */
+  private readonly frames = new FrameMonitor();
   /** The cue's speed in the shot playing (m/s), for the sound of the tip. */
   private strikeSpeed = 0;
   private readonly ballCentre = new Vector3();
@@ -118,6 +123,7 @@ export class App {
       this.scene.camera = this.rig.camera;
       const playing = this.player.update(dt);
       this.sound.setRolling(this.player.rollingSpeed);
+      this.watchFrames(dt, moving || playing);
       return moving || playing;
     });
     this.input = new TableInput(this.scene.renderer.domElement, {
@@ -165,6 +171,20 @@ export class App {
   private playerTable() {
     const t = this.match.table;
     return { W: t.spec.W, L: t.spec.L, pockets: t.pockets };
+  }
+
+  /**
+   * On the automatic setting, a device that animates at under 40 frames a second is given the low
+   * quality, once, and told why.
+   */
+  private watchFrames(dt: number, animating: boolean): void {
+    if (this.settings.get().quality !== 'auto' || this.scene.quality === 'low') return;
+    this.frames.record(dt, animating);
+    if (!this.frames.slow) return;
+    const fps = Math.round(1 / this.frames.median);
+    this.frames.reset();
+    this.scene.lowerQuality();
+    this.onQualityLowered(fps);
   }
 
   /** Starts a match with these terms. */
