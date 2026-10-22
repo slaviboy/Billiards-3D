@@ -48,6 +48,8 @@ npm run audit:dist   # the built site: no source maps, local addresses or privat
 
 **Run end-to-end tests one file at a time** (`npx playwright test tests/e2e/boot.spec.ts`). The
 machine is shared with other work: never start the whole suite, or a second run, without asking.
+A second working copy (a git worktree) must test on its own port, `POOL_E2E_PORT=4177`, or its
+run reuses the first copy's server and tests the wrong build.
 
 ## Rules that keep the game correct
 
