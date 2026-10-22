@@ -225,12 +225,16 @@ export function settingsDialog(store: Store<Settings>): Promise<void> {
     volume.setAttribute('aria-label', 'Volume');
     volume.addEventListener('input', () => set({ volume: Number(volume.value) / 100 }));
     const [left] = switchRow('Controls on the left', s.leftHanded, (on) => set({ leftHanded: on }));
+    const [keepZoom] = switchRow('Keep the zoom while turning the view', s.keepZoom, (on) =>
+      set({ keepZoom: on }),
+    );
     const name = textInput(s.name, 'Your name');
     name.addEventListener('change', () => set({ name: name.value.trim() || s.name }));
     body.append(
       group(
         'Table',
         field('Camera', view.element),
+        keepZoom,
         field('Aiming guide', guide.element),
         field('Shot playback', speed.element),
         field('Cloth', cloth.element),

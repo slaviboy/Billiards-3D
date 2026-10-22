@@ -91,6 +91,11 @@ export class CameraRig {
   private blend = 0;
   /** Whether the player has moved the 3D view; until then it follows the screen's shape. */
   private moved = false;
+  /**
+   * Whether turning and tilting keep the zoom. Otherwise the table is refitted to the screen at each
+   * angle, which zooms in and out as the view turns.
+   */
+  private keepZoom = false;
   private readonly corners: Vector3[] = [];
   private readonly forward = new Vector3();
   private readonly right = new Vector3();
@@ -148,6 +153,12 @@ export class CameraRig {
     if (unchanged) return;
     this.insets = { ...insets };
     this.fitHome();
+    this.apply();
+  }
+
+  setKeepZoom(on: boolean): void {
+    if (on === this.keepZoom) return;
+    this.keepZoom = on;
     this.apply();
   }
 
@@ -298,7 +309,8 @@ export class CameraRig {
     // turned as far as the player turned it.
     const o3 = this.current['3d'];
     const oT = this.current.top;
-    const topAzimuth = (this.landscape ? 90 * DEG : 0) + oT.azimuth;
+    const topBase = this.landscape ? 90 * DEG : 0;
+    const topAzimuth = topBase + oT.azimuth;
     const t = smooth(this.blend);
     const azimuth = mixAngle(o3.azimuth, topAzimuth, t);
     const elevation = o3.elevation + (90 * DEG - 1e-4 - o3.elevation) * t;
@@ -307,8 +319,16 @@ export class CameraRig {
     const tx = o3.targetX + (oT.targetX - o3.targetX) * t;
     const tz = o3.targetZ + (oT.targetZ - o3.targetZ) * t;
 
+    // The framing: fitted to the table as it is seen now, or, keeping the zoom, as it is seen from
+    // the view's home angle and tilt, so that turning and tilting move the camera round at one
+    // distance.
+    const homeElevation = this.homeOf('3d').elevation;
+    const fitAzimuth = this.keepZoom ? mixAngle(0, topBase, t) : azimuth;
+    const fitElevation = this.keepZoom
+      ? homeElevation + (90 * DEG - 1e-4 - homeElevation) * t
+      : elevation;
     const tanHalf = Math.tan((fov * DEG) / 2);
-    const distance = this.fitDistance(azimuth, elevation, tanHalf, freeW, freeH) * zoom;
+    const distance = this.fitDistance(fitAzimuth, fitElevation, tanHalf, freeW, freeH) * zoom;
     const camera = this.perspective;
     camera.fov = fov;
     camera.aspect = this.width / this.height;
@@ -331,8 +351,11 @@ export class CameraRig {
     const ortho = this.ortho;
     const ux = -Math.sin(topAzimuth);
     const uz = -Math.cos(topAzimuth);
-    const acrossScreen = Math.abs(this.halfX * uz) + Math.abs(this.halfZ * ux);
-    const upScreen = Math.abs(this.halfX * ux) + Math.abs(this.halfZ * uz);
+    const fitTop = this.keepZoom ? topBase : topAzimuth;
+    const fx = -Math.sin(fitTop);
+    const fz = -Math.cos(fitTop);
+    const acrossScreen = Math.abs(this.halfX * fz) + Math.abs(this.halfZ * fx);
+    const upScreen = Math.abs(this.halfX * fx) + Math.abs(this.halfZ * fz);
     const scale =
       Math.min((freeW * MARGIN) / (2 * acrossScreen), (freeH * MARGIN) / (2 * upScreen)) / oT.zoom;
     const halfH = this.height / (2 * scale);

@@ -166,6 +166,7 @@ export class App {
     });
     settings.subscribe((next) => {
       if (next.view !== this.rig.view) this.rig.setView(next.view);
+      this.rig.setKeepZoom(next.keepZoom);
       this.sound.configure(next.sound, next.volume);
       this.guide.setLength(next.guide);
       this.player.speed = next.speed;
