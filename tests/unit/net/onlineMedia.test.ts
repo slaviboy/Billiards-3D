@@ -11,8 +11,10 @@
 
 import { describe, expect, it } from 'vitest';
 import { OnlineMedia } from '../../../src/net/OnlineMedia.ts';
-import { FakeTrack, asTrack, devices } from '../../support/fakeMedia.ts';
-import { MemoryLink } from '../../support/memoryLink.ts';
+import { OnlineSession } from '../../../src/net/OnlineSession.ts';
+import { FakeStream, FakeTrack, asStream, asTrack, devices } from '../../support/fakeMedia.ts';
+import { MemoryLink, plug, settle } from '../../support/memoryLink.ts';
+import { BUILD, device, sessionOptions, terms } from '../../support/onlineSides.ts';
 
 function media(denied = false) {
   const d = devices(denied);
@@ -112,5 +114,74 @@ describe('OnlineMedia', () => {
     expect(m.state.get()).toMatchObject({ mic: 'off', cam: 'off', friendVideo: null });
     await m.toggleCam();
     expect(m.state.get().cam).toBe('off');
+  });
+});
+
+describe('media in an online game', () => {
+  async function game() {
+    const me = device();
+    const d = devices();
+    const link = new MemoryLink();
+    const friend = new MemoryLink();
+    const session = OnlineSession.host({
+      ...sessionOptions(me, link, 'Ana'),
+      terms: (name) => terms(name),
+      media: d.options,
+    });
+    plug(link, friend);
+    await settle();
+    return { session, link, friend, asked: d.asked };
+  }
+
+  const hello = (name: string) => ({ t: 'hello', v: 1, build: BUILD, name });
+
+  it('nothing the other player sends can turn on a camera or microphone here', async () => {
+    const { session, friend, asked } = await game();
+    friend.sendRaw(hello('Eve'));
+    friend.sendRaw({ t: 'media', mic: true, cam: true });
+    friend.sendRaw({ t: 'media', mic: true, cam: true, start: true });
+    await settle();
+    expect(asked).toEqual([]);
+    expect(session.media.state.get()).toMatchObject({ mic: 'off', cam: 'off' });
+    expect(session.state.get().friendMedia).toEqual({ mic: true, cam: true });
+  });
+
+  it('holds tracks until the other player has shown who they are', async () => {
+    const { session, link, friend } = await game();
+    const early = new FakeTrack('video');
+    link.handlers.track?.(asTrack(early), asStream(new FakeStream()));
+    expect(session.media.state.get().friendVideo).toBeNull();
+    friend.sendRaw(hello('Eve'));
+    await settle();
+    expect(session.media.state.get().friendVideo).not.toBeNull();
+  });
+
+  it("a stranger's tracks are stopped when the stranger is turned away", async () => {
+    const { session, link, friend } = await game();
+    friend.sendRaw(hello('Ben'));
+    await settle();
+    friend.kick();
+    await settle();
+    const stranger = new MemoryLink();
+    plug(link, stranger);
+    await settle();
+    const sneaky = new FakeTrack('video');
+    link.handlers.track?.(asTrack(sneaky), asStream(new FakeStream()));
+    stranger.sendRaw(hello('Eve'));
+    await settle();
+    expect(sneaky.readyState).toBe('ended');
+    expect(session.state.get().friendName).toBe('Ben');
+  });
+
+  it('tells the other player when this side’s devices change, and leaving stops them', async () => {
+    const { session, friend } = await game();
+    friend.sendRaw(hello('Ben'));
+    await settle();
+    await session.media.toggleCam();
+    await settle();
+    expect(session.media.state.get().cam).toBe('on');
+    expect(friend.other?.sentOf('media').at(-1)).toEqual({ t: 'media', mic: false, cam: true });
+    session.dispose();
+    expect(session.media.state.get().cam).toBe('off');
   });
 });

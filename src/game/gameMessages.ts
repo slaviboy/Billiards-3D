@@ -15,9 +15,10 @@
 // with the fingerprint of the table it led to; nothing the other side sends is a result to take on
 // trust, except the host's table when the two have to be brought back in step.
 //
-// parsePoolMessage and parseTerms accept the exact shapes below and nothing else. They check what
-// can be checked without the match (types, ranges, lengths); MatchController and the port check
-// the rest against the table (whose turn, which shot, where the cue ball may go).
+// parsePoolMessage and parseTerms accept the exact shapes below and nothing else: what is not one of
+// them is noise, dropped and counted by the guard. A shot of the right shape is checked by the
+// port, against this device's own match: the cue's values in range (shotInRange), whose turn,
+// which shot, where the cue ball may go, the 8's call; failing any of those is a rule break.
 
 import {
   MAX_COUNT,
@@ -114,7 +115,8 @@ export type GameMessage =
       readonly b: number;
       readonly x?: number;
       readonly y?: number;
-      readonly pocket: PocketId | null;
+      /** A PocketId once the receiver has checked it (shotInRange). */
+      readonly pocket: number | null;
       readonly safety: boolean;
       readonly h: string;
     }
@@ -197,12 +199,12 @@ export function parsePoolMessage(data: Raw): GameMessage | null {
       ) {
         return null;
       }
-      const code = { yaw: data.yaw, pitch: data.pitch, speed: data.speed, a: data.a, b: data.b };
-      if (!isInt(data.n, 0, MAX_COUNT) || !isShotCode(code)) return null;
+      const code = wholeCode(data);
+      if (!isInt(data.n, 0, MAX_COUNT) || !code) return null;
       const placed = Object.hasOwn(data, 'x');
       if (placed !== Object.hasOwn(data, 'y')) return null;
       if (placed && !(isPlacementUnit(data.x) && isPlacementUnit(data.y))) return null;
-      if (data.pocket !== null && !isPocketId(data.pocket)) return null;
+      if (data.pocket !== null && !isWhole(data.pocket)) return null;
       if (typeof data.safety !== 'boolean' || !isHash(data.h)) return null;
       return {
         t: 'shot',
@@ -216,8 +218,8 @@ export function parsePoolMessage(data: Raw): GameMessage | null {
     }
     case 'aim': {
       if (!hasKeys(data, ['t', 'yaw', 'pitch', 'speed', 'a', 'b', 'pull'])) return null;
-      const code = { yaw: data.yaw, pitch: data.pitch, speed: data.speed, a: data.a, b: data.b };
-      if (!isShotCode(code) || !isInt(data.pull, 0, 1000)) return null;
+      const code = wholeCode(data);
+      if (!code || !isInt(data.pull, 0, 1000)) return null;
       return { t: 'aim', ...code, pull: data.pull };
     }
     case 'place':
@@ -240,6 +242,35 @@ export function parsePoolMessage(data: Raw): GameMessage | null {
 
 function isPlacementUnit(value: unknown): value is number {
   return isInt(value, -MAX_PLACEMENT, MAX_PLACEMENT);
+}
+
+/** A whole number a 32-bit integer can hold. */
+function isWhole(value: unknown): value is number {
+  return isInt(value, -0x80000000, 0x7fffffff);
+}
+
+/**
+ * The cue's five integers, if they are whole numbers. Whether they lie in the cue's range is the
+ * receiver's check (isShotCode), against which a shot out of range is a rule break, not noise.
+ */
+function wholeCode(data: Raw): ShotCode | null {
+  const { yaw, pitch, speed, a, b } = data;
+  if (!isWhole(yaw) || !isWhole(pitch) || !isWhole(speed) || !isWhole(a) || !isWhole(b)) {
+    return null;
+  }
+  return { yaw, pitch, speed, a, b };
+}
+
+/** Whether a received shot's values are all within what the cue and the table allow. */
+export function shotInRange(message: { readonly pocket?: number | null } & ShotCode): boolean {
+  const code = {
+    yaw: message.yaw,
+    pitch: message.pitch,
+    speed: message.speed,
+    a: message.a,
+    b: message.b,
+  };
+  return isShotCode(code) && (message.pocket == null || isPocketId(message.pocket));
 }
 
 const SYNC_KEYS = [

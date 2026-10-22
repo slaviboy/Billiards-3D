@@ -22,10 +22,12 @@ import {
   parseTerms,
   rematchTerms,
   setupFor,
+  shotInRange,
   shotMessage,
   stateFromSync,
   syncMessage,
   type PoolTerms,
+  type ShotMessage,
   type SyncMessage,
 } from '../../../src/game/gameMessages.ts';
 import { MatchController, type MatchState } from '../../../src/game/MatchController.ts';
@@ -92,7 +94,7 @@ describe('the game messages', () => {
     for (const message of valid) expect(arrive(message)).toEqual(message);
   });
 
-  it('drops extra, missing, wrongly typed and out-of-range fields', () => {
+  it('drops extra, missing and wrongly typed fields', () => {
     const shot = shotMessage(
       3,
       { yaw: 1, pitch: 0, speed: 100, a: 0, b: 0 },
@@ -105,20 +107,14 @@ describe('the game messages', () => {
       { ...shot, n: -1 },
       { ...shot, n: 1.5 },
       { ...shot, yaw: 1.5 },
-      { ...shot, yaw: -1 },
-      { ...shot, yaw: 1 << 20 },
-      { ...shot, pitch: 601 },
-      { ...shot, speed: 49 },
-      { ...shot, speed: MAX_SPEED + 1 },
+      { ...shot, yaw: 2 ** 40 },
       { ...shot, speed: '100' },
-      { ...shot, a: MAX_OFFSET + 1 },
-      // Within each limit, but beyond the miscue circle.
-      { ...shot, a: 400, b: 400 },
+      { ...shot, b: null },
       { ...shot, x: 100 },
       { ...shot, y: 100 },
       { ...shot, x: 1.5, y: 100 },
       { ...shot, x: 2_000_000, y: 100 },
-      { ...shot, pocket: 6 },
+      { ...shot, pocket: 1.5 },
       { ...shot, pocket: '1' },
       { ...shot, pocket: undefined },
       { ...shot, safety: 'no' },
@@ -141,6 +137,35 @@ describe('the game messages', () => {
     }
     // undefined does not survive JSON, but an object can hold it.
     expect(parsePoolMessage({ ...shot, pocket: undefined })).toBeNull();
+  });
+
+  it('lets a well-formed shot out of the cue’s range through, for the receiver to refuse', () => {
+    const shot = shotMessage(
+      3,
+      { yaw: 1, pitch: 0, speed: 100, a: 0, b: 0 },
+      null,
+      false,
+      null,
+      HASH,
+    );
+    expect(shotInRange(shot)).toBe(true);
+    expect(shotInRange({ ...shot, pocket: 5 })).toBe(true);
+    for (const patch of [
+      { yaw: -1 },
+      { yaw: 1 << 20 },
+      { pitch: 601 },
+      { speed: 49 },
+      { speed: MAX_SPEED + 1 },
+      { a: MAX_OFFSET + 1 },
+      // Within each limit, but beyond the miscue circle.
+      { a: 400, b: 400 },
+      { pocket: 6 },
+      { pocket: -1 },
+    ]) {
+      const message = arrive({ ...shot, ...patch });
+      expect(message, JSON.stringify(patch)).not.toBeNull();
+      expect(shotInRange(message as ShotMessage), JSON.stringify(patch)).toBe(false);
+    }
   });
 
   it('returns fresh objects, never the received ones', () => {

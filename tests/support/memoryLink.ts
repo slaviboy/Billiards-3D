@@ -112,7 +112,10 @@ export function unplug(a: MemoryLink, b: MemoryLink): void {
   }
 }
 
-/** Lets every pending message and handler run. */
+/**
+ * Lets every pending message and handler run. Each round lets the promise callbacks queued so far
+ * run; setImmediate rather than a zero timeout, which some systems round up to a 15 ms tick.
+ */
 export async function settle(rounds = 30): Promise<void> {
-  for (let i = 0; i < rounds; i++) await new Promise((resolve) => setTimeout(resolve, 0));
+  for (let i = 0; i < rounds; i++) await new Promise((resolve) => setImmediate(resolve));
 }
