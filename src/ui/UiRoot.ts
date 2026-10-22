@@ -579,17 +579,16 @@ export class UiRoot {
     this.lastTick = now;
     const state = this.app.match.current;
     const limit = state.setup.shotClock;
-    if (limit <= 0 || !this.app.canAct()) {
+    // Online, both clocks are kept by the game's port (src/game/GamePort.ts), alike on both sides.
+    const online = state.setup.mode === 'online' && this.online !== null;
+    if (limit <= 0 || online || !this.app.canAct()) {
       this.renderClock(state);
       return;
     }
     const key = `${state.rackNumber}:${state.shot}:${state.rack.turn}:${state.rack.phase}`;
     if (key !== this.clock.key) this.clock = { key, used: 0 };
-    // The clock stops while a menu or dialog is open, except online: the other player's game
-    // times this turn too, and does not see this side's menus.
-    if (state.setup.mode === 'online' || (!dialogOpen() && !this.power.pulling)) {
-      this.clock.used += dt;
-    }
+    // The clock stops while a menu or dialog is open.
+    if (!dialogOpen() && !this.power.pulling) this.clock.used += dt;
     if (this.clock.used >= limit) {
       this.clock.used = 0;
       this.app.match.timeOut();
@@ -603,13 +602,13 @@ export class UiRoot {
   private renderClock(state: MatchState): void {
     const limit = state.setup.shotClock;
     const timing = limit > 0 && this.app.canAct(state);
-    // Online, the other player's clock as this side times it (with the network's allowance).
-    const remote = limit > 0 && !timing ? (this.online?.remoteClock() ?? null) : null;
+    // Online, the clocks the game's port keeps (the other player's with the network's allowance).
+    const online = state.setup.mode === 'online' ? this.online : null;
     for (const seat of [0, 1] as const) {
-      const theirs = remote !== null && state.rack.turn === seat;
-      const active = (timing && state.rack.turn === seat) || theirs;
-      const used = theirs ? remote.used : this.clock.used;
-      const allowed = theirs ? remote.limit : limit;
+      const kept = online && limit > 0 ? online.clockFor(seat) : null;
+      const active = online ? kept !== null : timing && state.rack.turn === seat;
+      const used = kept ? kept.used : this.clock.used;
+      const allowed = kept ? kept.limit : limit;
       this.cards[seat].render({
         ...this.cardView(state, seat),
         clock: active ? Math.max(0, 1 - used / allowed) : null,

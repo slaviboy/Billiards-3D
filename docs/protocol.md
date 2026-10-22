@@ -130,13 +130,23 @@ gives exactly its fingerprint; otherwise the host forfeits.
 
 ## The shot clock
 
-The shooter's own app runs its clock, without stopping for menus (the other player cannot see
-them), and on expiry applies the time-out and sends `timeout`. The receiver times the same turn
-from the moment the shot that gave the table has played out at the slowest playback speed, and
-allows the measured network delay (the median of the last five round trips, capped at one second)
-and a five-second grace. An app that lets its clock run past all of that without a word has stopped
-keeping it, and loses. The receiver shows that clock, with the allowance, on the other player's
-card.
+Both sides keep both clocks (`PoolPort`), from the same moment: a turn's clock starts once every
+shot so far could have played out, one after another, at normal speed (the shots' simulated
+lengths, plus a second each for balls settling in a pocket), whatever either screen is actually
+doing. A faster playback setting, or a tab in the background that has stopped drawing, changes
+nothing; menus do not stop the clock either, since the other player cannot see them.
+
+- **This player's turn.** When the clock runs out, the port calls time (`MatchController.timeOut`),
+  sends `timeout` and says so. A player who switched to another tab during the other's shot gets
+  the foul, not a lost match.
+- **The other player's turn.** The port waits for their `timeout` (or their shot), allowing the
+  measured network delay (the median of the last five round trips, capped at one second) and a
+  five-second grace. An app that lets its clock run past all of that without a word has stopped
+  keeping it, and loses.
+
+Each card shows its player's clock as this side keeps it, the other player's with the allowance.
+While play is held (the other player away, the tables being brought in step) no clock runs, and
+the turn's clock starts afresh when play resumes.
 
 ## Limits
 
@@ -160,7 +170,9 @@ card.
   app could claim the tables differ and send another possible table; it can do so at most three
   times before the session ends without a winner. A history of every action would let the guest
   check the host's table, but would not fit in one message for a long match.
-- **A reload resets the reloading player's own shot clock** for the turn in progress.
+- **A dropped connection gives the turn a fresh clock.** Play is held while a player is away and
+  the clock starts afresh when they are back, so a player could drop out (or reload) on purpose to
+  gain time on a shot.
 - **Networks that need a relay.** The connection is direct; there is no TURN server. About one pair
   of networks in ten (some mobile data and office networks) cannot connect directly, and the
   players are told so.

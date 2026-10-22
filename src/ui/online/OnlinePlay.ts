@@ -250,8 +250,8 @@ export class OnlinePlay implements OnlineHooks {
     return true;
   }
 
-  remoteClock(): { used: number; limit: number } | null {
-    return this.active ? (this.port?.remoteClock() ?? null) : null;
+  clockFor(seat: Seat): { used: number; limit: number } | null {
+    return this.active ? (this.port?.clockFor(seat) ?? null) : null;
   }
 
   // --- joining -------------------------------------------------------------------------------

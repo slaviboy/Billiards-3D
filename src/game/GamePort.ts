@@ -15,9 +15,14 @@
 // before playing it (whose turn, which shot, legal values, a placement allowed where it is, the 8's
 // pocket called exactly when it is due), simulates it here, judges it here, and compares the table
 // it led to with the sender's fingerprint. It also shows the other player's cue from their
-// previews, sends this player's at most eight times a second, and keeps watch on the other
-// player's shot clock: their own app is meant to call time on itself, and one that lets the clock
-// run far past the limit (plus the measured network delay and a grace) has stopped keeping it.
+// previews and sends this player's, at most eight times a second.
+//
+// It keeps both shot clocks, from the same moment on both devices: a turn's clock starts once every
+// shot so far could have played out at normal speed, whatever either screen is doing (a faster
+// playback, or a tab in the background that has stopped drawing). On this player's turn the port
+// calls time itself when the clock runs out, and says so. On the other player's turn it waits for
+// their app to do the same; one that lets the clock run past the limit, the measured network
+// delay and a grace has stopped keeping it.
 
 import {
   browserTimers,
@@ -124,10 +129,10 @@ export class PoolPort implements GamePort<GameMessage, PoolTerms> {
   private held = false;
   private allowance = 0;
   private lastOwn: OwnAction | null = null;
-  /** The last shot anyone made: when this device committed it, and its simulated length. */
-  private lastShot = { at: -Infinity, duration: 0 };
-  /** The other player's turn being timed: which turn, when its clock started, the watch. */
-  private watch: { key: string; since: number; timer: unknown } | null = null;
+  /** When every shot so far could have played out, one after another, at normal speed. */
+  private playbackEnd = -Infinity;
+  /** The turn being timed: which, whether it is this player's, since when, and its timer. */
+  private clock: { key: string; mine: boolean; since: number; timer: unknown } | null = null;
   /** The last preview sent, to send only changes. */
   private sentAim = '';
   private sentPlace = '';
@@ -156,7 +161,7 @@ export class PoolPort implements GamePort<GameMessage, PoolTerms> {
   dispose(): void {
     for (const off of this.offs.splice(0)) off();
     this.timers.clearInterval(this.previewTimer);
-    this.stopWatch();
+    this.stopClock();
     this.listeners.clear();
     this.started = false;
   }
@@ -168,9 +173,9 @@ export class PoolPort implements GamePort<GameMessage, PoolTerms> {
     this.started = true;
     this.held = false;
     this.lastOwn = null;
-    this.lastShot = { at: -Infinity, duration: 0 };
+    this.playbackEnd = -Infinity;
     this.sentAim = this.sentPlace = '';
-    this.stopWatch();
+    this.stopClock();
     await this.table.newMatch(setupFor(terms), [this.mySeat]);
     this.onState();
   }
@@ -262,7 +267,8 @@ export class PoolPort implements GamePort<GameMessage, PoolTerms> {
 
   setLagAllowance(ms: number): void {
     this.allowance = Math.max(0, ms);
-    if (this.watch) this.arm(this.watch.key, this.watch.since);
+    const clock = this.clock;
+    if (clock && !clock.mine) this.arm(clock.key, clock.mine, clock.since);
   }
 
   hold(on: boolean): void {
@@ -271,21 +277,29 @@ export class PoolPort implements GamePort<GameMessage, PoolTerms> {
     this.table.setLocalSeats(on ? [] : [this.mySeat]);
     if (on) this.table.showRemoteAim(null);
     // Away or out of step, nobody's clock runs; it starts afresh when play resumes.
-    this.stopWatch();
+    this.stopClock();
     this.onState();
   }
 
-  // --- the other player's clock, for the interface -----------------------------------------------
+  // --- the shot clocks, for the interface --------------------------------------------------------
 
-  /** The other player's shot clock as this side times it: seconds used and allowed; or null. */
-  remoteClock(): { used: number; limit: number } | null {
-    const watch = this.watch;
+  /**
+   * The shot clock of `seat`, while it is that player's turn: seconds used, and seconds allowed
+   * (for the other player, with the network's allowance). Null when no clock runs for them.
+   */
+  clockFor(seat: Seat): { used: number; limit: number } | null {
+    const clock = this.clock;
     const limit = this.table.match.current.setup.shotClock;
-    if (!watch || limit <= 0) return null;
+    if (!clock || limit <= 0 || clock.mine !== (seat === this.mySeat)) return null;
     return {
-      used: Math.max(0, (this.now() - watch.since) / 1000),
-      limit: limit + this.allowance / 1000,
+      used: Math.max(0, (this.now() - clock.since) / 1000),
+      limit: clock.mine ? limit : limit + this.allowance / 1000,
     };
+  }
+
+  /** The other player's shot clock as this side times it, or null. */
+  remoteClock(): { used: number; limit: number } | null {
+    return this.clockFor(other(this.mySeat));
   }
 
   // --- the other player's play -------------------------------------------------------------------
@@ -420,10 +434,12 @@ export class PoolPort implements GamePort<GameMessage, PoolTerms> {
   private onAction(action: MatchAction): void {
     if (!this.online()) return;
     if (action.kind === 'shot') {
-      this.lastShot = { at: this.now(), duration: action.duration };
+      // The shots play out one after another, each from when this device took it at the soonest.
+      const from = Math.max(this.playbackEnd, this.now());
+      this.playbackEnd = from + action.duration * 1000 + PLAYBACK_TAIL_MS;
       // The match told of its new state before this: time the turn again, now that the shot's
       // length is known.
-      this.stopWatch();
+      this.stopClock();
       this.onState();
     }
     if (action.seat !== this.mySeat) return;
@@ -481,7 +497,7 @@ export class PoolPort implements GamePort<GameMessage, PoolTerms> {
     for (const listener of this.listeners) listener.send(message, false);
   }
 
-  // --- the other player's shot clock -------------------------------------------------------------
+  // --- the shot clocks ---------------------------------------------------------------------------
 
   private onState(): void {
     if (!this.online()) return;
@@ -491,41 +507,57 @@ export class PoolPort implements GamePort<GameMessage, PoolTerms> {
       !this.held &&
       state.setup.shotClock > 0 &&
       state.winner === null &&
-      (rack.phase === 'break' || rack.phase === 'play') &&
-      rack.turn !== this.mySeat;
+      (rack.phase === 'break' || rack.phase === 'play');
     if (!timed) {
-      if (this.watch) this.stopWatch();
+      if (this.clock) this.stopClock();
       return;
     }
     const key = `${state.rackNumber}:${state.shot}:${rack.turn}:${rack.phase}`;
-    if (this.watch?.key === key) return;
+    if (this.clock?.key === key) return;
+    // A new turn: the other player's cue shows again only from their next preview.
     this.table.showRemoteAim(null);
-    // Their clock starts once the shot that gave them the table has played out, at the slowest
-    // playback anyone can choose.
-    const now = this.now();
-    const playback = this.lastShot.at + this.lastShot.duration * 1000 + PLAYBACK_TAIL_MS;
-    this.arm(key, Math.max(now, playback));
+    // The clock starts once the shots so far have played out at normal speed.
+    this.arm(key, rack.turn === this.mySeat, Math.max(this.now(), this.playbackEnd));
   }
 
-  private arm(key: string, since: number): void {
-    this.stopWatch();
+  private arm(key: string, mine: boolean, since: number): void {
+    this.stopClock();
     const limit = this.table.match.current.setup.shotClock * 1000;
-    const due = since + limit + this.allowance + STALL_GRACE_MS - this.now();
-    const timer = this.timers.setTimeout(() => this.stalled(key), Math.max(0, due));
-    this.watch = { key, since, timer };
+    const due = since + limit + (mine ? 0 : this.allowance + STALL_GRACE_MS) - this.now();
+    const timer = this.timers.setTimeout(
+      () => (mine ? this.expired(key) : this.stalled(key)),
+      Math.max(0, due),
+    );
+    this.clock = { key, mine, since, timer };
+  }
+
+  /** This player's clock ran out: time is called here, and the other side is told. */
+  private expired(key: string): void {
+    if (this.clock?.key !== key || this.held || this.status() !== 'playing') return;
+    this.clock = null;
+    const match = this.table.match;
+    const name = match.current.setup.names[this.mySeat];
+    // The match reports the time-out, which goes to the other player as this player's own.
+    match.timeOut();
+    this.table.showBalls();
+    this.table.aimAtRack();
+    const after = match.current;
+    const next = after.setup.names[after.rack.turn];
+    const then = after.rack.phase === 'break' ? `${next} breaks` : `${next}: ball in hand`;
+    this.table.say(`Time ran out for ${name}. ${then}`);
   }
 
   private stalled(key: string): void {
-    if (this.watch?.key !== key || this.held || this.status() !== 'playing') return;
-    this.watch = null;
+    if (this.clock?.key !== key || this.held || this.status() !== 'playing') return;
+    this.clock = null;
     for (const listener of this.listeners) {
       listener.violation('stalled', 'let its shot clock run out without saying so');
     }
   }
 
-  private stopWatch(): void {
-    if (this.watch) this.timers.clearTimeout(this.watch.timer);
-    this.watch = null;
+  private stopClock(): void {
+    if (this.clock) this.timers.clearTimeout(this.clock.timer);
+    this.clock = null;
   }
 
   // --- helpers ---------------------------------------------------------------------------------

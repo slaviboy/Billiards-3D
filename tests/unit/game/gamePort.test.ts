@@ -206,15 +206,17 @@ describe('the 8-ball port', () => {
     expect(violations).toEqual(['let its shot clock run out without saying so']);
   });
 
-  it('starts their clock once the shot that gave them the table has played out', async () => {
+  it('starts a clock once the shots so far have played out, one after another', async () => {
     const { d, violations } = await started('host', { shotClock: 30 });
-    // The break, then shots until one passes the table (the seed is fixed: always the same way).
-    let duration = d.shoot().timeline.duration;
-    for (let i = 0; i < 10 && d.match.current.rack.turn === 0; i++) {
-      duration = d.shoot(shotFor(d.match, 0.3 + i)).timeline.duration;
-    }
+    // The break, then shots until one passes the table (the seed is fixed: always the same way),
+    // all at once: on a screen they would play one after the other at normal speed.
+    let playback = 0;
+    const play = (code?: ReturnType<typeof shotFor>) => {
+      playback += d.shoot(code).timeline.duration * 1000 + PLAYBACK_TAIL_MS;
+    };
+    play();
+    for (let i = 0; i < 10 && d.match.current.rack.turn === 0; i++) play(shotFor(d.match, 0.3 + i));
     expect(d.match.current.rack).toMatchObject({ phase: 'play', turn: 1 });
-    const playback = duration * 1000 + PLAYBACK_TAIL_MS;
     expect(d.port.remoteClock()!.used).toBe(0);
     d.timers.advance(playback);
     expect(d.port.remoteClock()!.used).toBe(0);
@@ -222,6 +224,33 @@ describe('the 8-ball port', () => {
     expect(violations).toEqual([]);
     d.timers.advance(1);
     expect(violations).toHaveLength(1);
+  });
+
+  it('calls time on this player when their own clock runs out, and tells the other side', async () => {
+    const { d, last } = await started('host', { shotClock: 30 });
+    expect(d.port.clockFor(0)).toEqual({ used: 0, limit: 30 });
+    expect(d.port.clockFor(1)).toBeNull();
+    d.timers.advance(29_999);
+    expect(d.match.current.rack.breaker).toBe(0);
+    d.timers.advance(1);
+    expect(last()).toEqual({ t: 'timeout', n: 0 });
+    expect(d.match.current.rack).toMatchObject({ phase: 'break', breaker: 1, turn: 1 });
+    expect(d.table.notes).toContain('Time ran out for Ana. Ben breaks');
+    // Now the other player's clock runs, with its allowance.
+    expect(d.port.clockFor(1)).toEqual({ used: 0, limit: 30 });
+  });
+
+  it('keeps this player’s clock running whatever the screen does, and not while held', async () => {
+    const { d, last } = await started('host', { shotClock: 30 });
+    // The screen is still busy playing something out: the clock runs all the same.
+    d.table.playing = true;
+    d.timers.advance(15_000);
+    d.port.hold(true);
+    d.timers.advance(60_000);
+    expect(last()?.t).not.toBe('timeout');
+    d.port.hold(false);
+    d.timers.advance(30_000);
+    expect(last()).toEqual({ t: 'timeout', n: 0 });
   });
 
   it('does not run their clock while play is held', async () => {

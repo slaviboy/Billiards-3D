@@ -165,6 +165,21 @@ describe('OnlineSession with 8-ball', () => {
     expect(b.match.current.winner).toBeNull();
   });
 
+  it('an honest app calls its own time, and the other side follows without a word', async () => {
+    const { a, b, host } = await game({ shotClock: 30, firstBreak: 1 });
+    // Both devices' clocks run; the guest's runs out first, and its app says so in time.
+    a.timers.advance(30_000);
+    b.timers.advance(30_000);
+    await settle();
+    a.timers.advance(STALL_GRACE_MS + 1_000);
+    await settle();
+    expect(host.state.get().status).toBe('playing');
+    expect(a.match.current.rack).toMatchObject({ phase: 'break', breaker: 0, turn: 0 });
+    expect(a.match.hash()).toBe(b.match.hash());
+    expect(a.table.notes).toContain('Time ran out for Ben. Ana breaks');
+    expect(b.table.notes).toContain('Time ran out for Ben. Ana breaks');
+  });
+
   it('does not watch the clock while the other player is away, and starts it afresh after', async () => {
     const { a, host, links } = await game({ shotClock: 30, firstBreak: 1 });
     a.timers.advance(20_000);

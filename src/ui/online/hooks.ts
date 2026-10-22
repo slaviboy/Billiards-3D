@@ -36,6 +36,9 @@ export interface OnlineHooks {
   leave(): Promise<void>;
   /** Before another match replaces the online one: asks, and leaves; false to stay. */
   leaveForNewMatch(): Promise<boolean>;
-  /** The other player's shot clock as this side times it (seconds used and allowed), or null. */
-  remoteClock(): { readonly used: number; readonly limit: number } | null;
+  /**
+   * Online, the shot clocks are kept by the game's port: `seat`'s clock while it is their turn
+   * (seconds used and allowed, the other player's with the network's allowance), or null.
+   */
+  clockFor(seat: Seat): { readonly used: number; readonly limit: number } | null;
 }
