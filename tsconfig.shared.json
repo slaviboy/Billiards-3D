@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "erasableSyntaxOnly": true
+  },
+  "include": [
+    "src/physics",
+    "src/table",
+    "src/rules",
+    "src/balls",
+    "src/game/shotCodec.ts",
+    "scripts"
+  ]
+}

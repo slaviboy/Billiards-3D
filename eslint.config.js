@@ -47,4 +47,50 @@ export default tseslint.config(
     files: ['scripts/**'],
     rules: { 'no-console': 'off' },
   },
+  {
+    // The simulation must compute the same bits in every browser (see
+    // tests/architecture/determinism.test.ts): no approximated Math functions, no ** operator, no
+    // clocks or random numbers. Sines and exponentials come from src/physics/dmath.ts.
+    files: ['src/physics/**', 'src/table/**', 'src/rules/**', 'src/game/shotCodec.ts'],
+    rules: {
+      'no-restricted-properties': [
+        'error',
+        ...[
+          'sin',
+          'cos',
+          'tan',
+          'asin',
+          'acos',
+          'atan',
+          'atan2',
+          'sinh',
+          'cosh',
+          'tanh',
+          'asinh',
+          'acosh',
+          'atanh',
+          'exp',
+          'expm1',
+          'log',
+          'log1p',
+          'log2',
+          'log10',
+          'pow',
+          'cbrt',
+          'hypot',
+          'random',
+        ].map((property) => ({
+          object: 'Math',
+          property,
+          message: 'Not exactly rounded: use src/physics/dmath.ts.',
+        })),
+      ],
+      'no-restricted-syntax': [
+        'error',
+        { selector: "BinaryExpression[operator='**']", message: 'Not exactly rounded.' },
+        { selector: "AssignmentExpression[operator='**=']", message: 'Not exactly rounded.' },
+      ],
+      'no-restricted-globals': ['error', 'Date', 'performance', 'crypto', 'window', 'document'],
+    },
+  },
 );
