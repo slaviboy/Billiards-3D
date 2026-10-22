@@ -38,8 +38,9 @@ test.use({
     ],
   },
 });
-// The relays are public and sometimes slow to introduce the two: one more try before failing.
-test.describe.configure({ timeout: 240_000, retries: 1 });
+// The relays are public and sometimes slow to introduce the two, and two 3D pages in software
+// rendering load a busy machine: a generous limit, and one more try before failing.
+test.describe.configure({ timeout: 360_000, retries: 1 });
 
 /** Counts peer connections and sockets from the first script on, before the game's own code. */
 async function countNetwork(page: Page) {
