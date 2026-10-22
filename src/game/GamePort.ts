@@ -83,6 +83,8 @@ export interface PortTable {
   showRemoteAim(aim: CueAim | null): void;
   /** A note for the player. */
   say(text: string): void;
+  /** The table was replaced by the host's: whatever it asks of this player next (a decision). */
+  restored?(): void;
 }
 
 /** Previews go out at most this often. */
@@ -357,8 +359,11 @@ export class PoolPort implements GamePort<GameMessage, PoolTerms> {
     match.timeOut();
     this.table.showBalls();
     this.table.aimAtRack();
-    const next = match.current.setup.names[match.current.rack.turn];
-    this.table.say(`Time ran out for ${state.setup.names[state.rack.turn]}: ${next} to shoot`);
+    const after = match.current;
+    const next = after.setup.names[after.rack.turn];
+    // On the break the other player breaks instead; later they take the cue ball in hand.
+    const then = after.rack.phase === 'break' ? `${next} breaks` : `${next}: ball in hand`;
+    this.table.say(`Time ran out for ${state.setup.names[state.rack.turn]}. ${then}`);
     return { kind: 'played' };
   }
 
@@ -406,6 +411,7 @@ export class PoolPort implements GamePort<GameMessage, PoolTerms> {
     this.table.showRemoteAim(null);
     this.table.showBalls();
     this.table.aimAtRack();
+    this.table.restored?.();
     return 'restored';
   }
 

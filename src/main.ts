@@ -12,11 +12,13 @@
 import './styles/base.css';
 import './styles/modern.css';
 import './styles/pool.css';
+import './styles/online.css';
 import { App } from './app/App.ts';
 import { installDebugHook } from './app/debugHook.ts';
 import { loadSettings, saveSettings } from './app/Settings.ts';
 import { Store } from './core/Store.ts';
 import { isTableSize } from './table/spec.ts';
+import { OnlinePlay } from './ui/online/OnlinePlay.ts';
 import { UiRoot } from './ui/UiRoot.ts';
 
 const root = document.getElementById('app');
@@ -43,6 +45,8 @@ const quality =
 const app = new App(root, import.meta.env.BASE_URL, settings, quality);
 const ui = new UiRoot(app);
 installDebugHook(app, ui);
+// Online play: an invitation in the address bar comes before the main menu (see UiRoot.menu).
+new OnlinePlay(app, ui);
 app.ready
   .then(() => {
     root.dataset.ready = 'true';

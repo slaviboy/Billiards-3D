@@ -69,6 +69,8 @@ export class App {
   safety = false;
   /** Seats played on this device: both on one device, one online. */
   localSeats: readonly Seat[] = [0, 1];
+  /** Online: the other player's cue shows, posed by their previews (src/ui/online). */
+  remoteCue = false;
   /** Called as the shot's playback passes each event (sounds). */
   onEvent: (event: PhysicsEvent) => void = () => {};
   private busy = false;
@@ -245,6 +247,11 @@ export class App {
     this.updateCue();
   }
 
+  /** How far the cue is pulled back now (0–1): online, the other player sees it. */
+  get drawn(): number {
+    return this.pull;
+  }
+
   /**
    * Plays a shot: this device's aim, or (online) the other player's shot. Resolves with the result
    * once it has played.
@@ -325,7 +332,7 @@ export class App {
 
   updateCue(): void {
     const cueBall = this.match.current.balls[0]!;
-    if (cueBall.s === Motion.Pocketed || this.busy || !this.canAct()) {
+    if (cueBall.s === Motion.Pocketed || this.busy || !(this.canAct() || this.remoteCue)) {
       this.cue.visible = false;
       this.scene.requestRender();
       return;

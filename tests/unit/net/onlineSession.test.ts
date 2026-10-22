@@ -143,6 +143,7 @@ describe('OnlineSession with 8-ball', () => {
     a.match.timeOut();
     await settle();
     expect(b.match.current.rack).toMatchObject({ phase: 'break', breaker: 1, turn: 1 });
+    expect(b.table.notes).toContain('Time ran out for Ana. Ben breaks');
     expect(b.match.hash()).toBe(a.match.hash());
     expect(b.table.canAct()).toBe(true);
   });

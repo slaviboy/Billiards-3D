@@ -59,7 +59,8 @@ function textInput(value: string, label: string): HTMLInputElement {
   return input;
 }
 
-export type MenuChoice = 'practice' | 'local' | 'settings' | 'controls' | 'rules' | 'close';
+export type MenuChoice =
+  'practice' | 'local' | 'online' | 'join' | 'settings' | 'controls' | 'rules' | 'close';
 
 /** The main menu, over the table. */
 export function mainMenu(): Promise<MenuChoice> {
@@ -84,6 +85,13 @@ export function mainMenu(): Promise<MenuChoice> {
         'A match of 8-ball on this device, taking turns',
         'local',
       ),
+      mode(
+        LINE_ICONS.globe,
+        'Play a friend online',
+        'A match of 8-ball over the internet: send your friend a link',
+        'online',
+      ),
+      mode(LINE_ICONS.link, 'Join a game', 'Open the link a friend sent you', 'join'),
     );
     const links = el('div', 'menu-links');
     links.append(
@@ -249,7 +257,15 @@ export function settingsDialog(store: Store<Settings>): Promise<void> {
 export type PauseChoice =
   'resume' | 'newGame' | 'settings' | 'controls' | 'rules' | 'concede' | 'menu';
 
-export function pauseMenu(options: { readonly canConcede: boolean }): Promise<PauseChoice> {
+/** The pause menu's choices, with those of an online game. */
+export type AnyPauseChoice = PauseChoice | 'resign' | 'leave';
+
+export function pauseMenu(options: {
+  readonly canConcede: boolean;
+  /** In an online game: Resign (while the match is on) and Leave, instead of a new game. */
+  readonly online?: { readonly canResign: boolean };
+}): Promise<AnyPauseChoice> {
+  if (options.online) return onlinePauseMenu(options.online.canResign);
   return openDialog<PauseChoice>('Paused', 'resume', ({ body, root, close }) => {
     root.classList.add('pause-menu');
     const list = el('div', 'pause-list');
@@ -270,6 +286,31 @@ export function pauseMenu(options: { readonly canConcede: boolean }): Promise<Pa
     );
     if (options.canConcede) list.append(item(LINE_ICONS.flag, 'Concede the rack', 'concede'));
     list.append(item(LINE_ICONS.exit, 'Main menu', 'menu'));
+    body.append(list);
+  });
+}
+
+/** The pause menu of an online game: the match goes on meanwhile, the clock too. */
+function onlinePauseMenu(canResign: boolean): Promise<AnyPauseChoice> {
+  return openDialog<AnyPauseChoice>('Menu', 'resume', ({ body, root, close }) => {
+    root.classList.add('pause-menu');
+    const list = el('div', 'pause-list');
+    const item = (icon: string, text: string, value: AnyPauseChoice, className = '') => {
+      const b = el('button', `pause-item ${className}`.trim());
+      b.type = 'button';
+      b.dataset.choice = value;
+      b.innerHTML = `${icon}<span>${text}</span>`;
+      b.addEventListener('click', () => close(value));
+      return b;
+    };
+    list.append(
+      item(LINE_ICONS.next, 'Back to the game', 'resume', 'primary'),
+      item(LINE_ICONS.sliders, 'Settings', 'settings'),
+      item(LINE_ICONS.target, 'Keyboard and mouse', 'controls'),
+      item(LINE_ICONS.book, 'Rules', 'rules'),
+    );
+    if (canResign) list.append(item(LINE_ICONS.flag, 'Resign the match', 'resign'));
+    list.append(item(LINE_ICONS.exit, 'Leave the online game', 'leave'));
     body.append(list);
   });
 }

@@ -61,6 +61,20 @@ export class PlayerCard {
     this.element.append(avatar, text, this.score);
   }
 
+  /**
+   * Online: the player's camera inside the round avatar, and the microphone, camera and speaker
+   * switches beside the score, so the top bar keeps its height.
+   */
+  attachMedia(video: HTMLVideoElement, controls: HTMLElement): void {
+    this.element.querySelector('.player-avatar')!.prepend(video);
+    this.score.before(controls);
+  }
+
+  /** Whether a picture shows in the avatar. */
+  setVideo(on: boolean): void {
+    this.element.classList.toggle('video-on', on);
+  }
+
   render(view: PlayerView): void {
     this.element.classList.toggle('active', view.active);
     this.element.classList.toggle(
