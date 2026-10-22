@@ -24,6 +24,7 @@ import { POOL_CODEC, type GameMessage, type PoolTerms } from '../../game/gameMes
 import { YAW_STEPS, type ShotCode } from '../../game/shotCodec.ts';
 import { openPeerLink } from '../../net/PeerLink.ts';
 import {
+  OUT_OF_STEP_MESSAGE,
   OnlineSession,
   type OnlineState,
   type SavedSession,
@@ -212,7 +213,12 @@ export class OnlinePlay implements OnlineHooks {
   async resign(): Promise<void> {
     const session = this.session;
     if (!session || session.closed || this.app.match.current.winner !== null) return;
-    const friend = session.state.get().friendName;
+    const { friendName: friend, status } = session.state.get();
+    if (status !== 'playing') {
+      // Their table would undo it when they came back.
+      this.ui.say(`${friend} is away. Wait for them to come back, or leave the game.`);
+      return;
+    }
     const sure = await offerDialog(
       'Resign the match?',
       `${friend} wins the match. You stay connected, for a rematch.`,
@@ -364,6 +370,7 @@ export class OnlinePlay implements OnlineHooks {
         }
         ui.render();
       },
+      finishPlayback: () => app.player.finish(),
       say: (text) => ui.say(text),
       restored: () => void ui.followUp(),
     };
@@ -449,9 +456,12 @@ export class OnlinePlay implements OnlineHooks {
       case 'resigned':
         await noticeDialog('You win the match', `${friend} resigned.`);
         break;
+      case 'outOfStep':
+        // The session closes a moment later, once the last word has crossed.
+        void noticeDialog('Online game over', OUT_OF_STEP_MESSAGE);
+        break;
       case 'left':
       case 'violation':
-      case 'outOfStep':
       case 'failed':
         // The message arrives with the closing state; give it a moment.
         queueMicrotask(() => {
@@ -462,17 +472,37 @@ export class OnlinePlay implements OnlineHooks {
     }
   }
 
+  /**
+   * Offers the win over a player who has stayed away; asked again a while after "Keep waiting",
+   * or once no other dialog is open, as long as they are still away.
+   */
   private async offerClaim(session: PoolSession): Promise<void> {
     const friend = session.state.get().friendName;
+    const again = (ms: number) =>
+      setTimeout(() => {
+        if (this.session === session && session.state.get().canClaimWin) {
+          void this.offerClaim(session);
+        }
+      }, ms);
+    if (dialogOpen()) {
+      again(5_000);
+      return;
+    }
     this.ui.say(`${friend} has been gone for two minutes. You can claim the win.`);
-    if (dialogOpen()) return;
     const claim = await offerDialog(
       'Claim the win?',
       `${friend} has been gone for two minutes. Claim the win, or keep waiting for them.`,
       'Claim the win',
       'Keep waiting',
     );
-    if (claim) await session.claimWin();
+    if (this.session !== session || !session.state.get().canClaimWin) return;
+    if (!claim) {
+      again(60_000);
+      return;
+    }
+    await session.claimWin();
+    const message = session.state.get().message;
+    if (message) await noticeDialog('You win the match', message);
   }
 
   // --- drawing -------------------------------------------------------------------------------

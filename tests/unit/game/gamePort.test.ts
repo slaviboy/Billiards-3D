@@ -14,7 +14,12 @@
 // watch on the other player's shot clock.
 
 import { describe, expect, it } from 'vitest';
-import { PLAYBACK_TAIL_MS, PREVIEW_MS, STALL_GRACE_MS } from '../../../src/game/GamePort.ts';
+import {
+  NEXT_RACK_MS,
+  PLAYBACK_TAIL_MS,
+  PREVIEW_MS,
+  STALL_GRACE_MS,
+} from '../../../src/game/GamePort.ts';
 import {
   shotMessage,
   syncMessage,
@@ -168,12 +173,55 @@ describe('the 8-ball port', () => {
     expect(await d.port.restore({ ...theirs, score: [9, 0] }, 'resync')).toBe('rejected');
   });
 
-  it('refuses a table more than one action behind this one', async () => {
-    const { d } = await started('host', { firstBreak: 0 });
+  it('takes the host’s table even several shots behind (the session counts it)', async () => {
+    const { d } = await started('guest', { firstBreak: 1 });
     const start = syncMessage(d.match.current, d.match.hash());
     d.shoot();
     d.match.state.set({ ...d.match.current, shot: 2 });
-    expect(await d.port.restore(start, 'rejoin')).toBe('rejected');
+    expect(await d.port.restore(start, 'rejoin')).toBe('restored');
+    expect(d.match.hash()).toBe(start.h);
+  });
+
+  it('ignores play that arrives after the match has ended (a resignation crossed it)', async () => {
+    const { d } = await started('host', { firstBreak: 1 });
+    const shot = theirShot(d);
+    await d.port.resign();
+    expect(await d.port.receive(shot)).toEqual({ kind: 'shown' });
+    expect(await d.port.receive({ t: 'timeout', n: 0 })).toEqual({ kind: 'shown' });
+    expect(await d.port.receive({ t: 'decide', n: 0, choice: 'accept' })).toEqual({
+      kind: 'shown',
+    });
+    expect(d.match.current.shot).toBe(0);
+  });
+
+  it('starts the next rack by itself, a moment after the last one has played out', async () => {
+    const { d } = await started();
+    d.match.concede(0);
+    d.timers.advance(NEXT_RACK_MS - 1);
+    expect(d.match.current.rack.phase).toBe('over');
+    d.timers.advance(1);
+    expect(d.match.current).toMatchObject({ rackNumber: 2, rack: { phase: 'break', turn: 1 } });
+    expect(d.table.notes).toContain('Rack 2: Ben breaks');
+  });
+
+  it('does not wait on a screen that has stopped drawing', async () => {
+    const { d } = await started('host', { firstBreak: 1 });
+    const shot = theirShot(d);
+    // A screen still playing something out, and not finishing when asked (a background tab).
+    d.table.playing = true;
+    d.table.stuck = true;
+    let receipt: unknown = null;
+    void d.port.receive(shot).then((r) => (receipt = r));
+    d.timers.advance(1_000);
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(receipt).toBeNull();
+    // Once asked to finish, a drawing screen jumps to the end, and the shot is played.
+    d.table.stuck = false;
+    for (let i = 0; i < 4; i++) {
+      d.timers.advance(50);
+      await new Promise((resolve) => setImmediate(resolve));
+    }
+    expect(receipt).toEqual({ kind: 'played' });
   });
 
   it('sends its last action again when the host’s table is from just before it', async () => {
@@ -251,6 +299,32 @@ describe('the 8-ball port', () => {
     d.port.hold(false);
     d.timers.advance(30_000);
     expect(last()).toEqual({ t: 'timeout', n: 0 });
+  });
+
+  it('times a choice the break left, taking the first on offer when it runs out', async () => {
+    const { d, last } = await started('host', { shotClock: 30 });
+    const s = d.match.current;
+    d.match.state.set({
+      ...s,
+      rack: { ...s.rack, phase: 'decision', decision: 'illegalBreak', turn: 0 },
+    });
+    expect(d.port.clockFor(0)).toEqual({ used: 0, limit: 30 });
+    d.timers.advance(30_000);
+    expect(last()).toEqual({ t: 'decide', n: 0, choice: 'accept' });
+    expect(d.match.current.rack.phase).toBe('play');
+    expect(d.table.notes).toContain('Time ran out for Ana, who plays the table as it lies');
+  });
+
+  it('lets the session check a stall again before acting on it', async () => {
+    const d = device();
+    let still: (() => boolean) | undefined;
+    d.port.onLocal({ send: () => undefined, violation: (_reason, _detail, s) => (still = s) });
+    await d.port.start(terms('Ben', { shotClock: 30, firstBreak: 1 }), 'host');
+    d.timers.advance(30_000 + STALL_GRACE_MS);
+    expect(still?.()).toBe(true);
+    // Their time-out was on its way after all: the turn has moved on.
+    await d.port.receive({ t: 'timeout', n: 0 });
+    expect(still?.()).toBe(false);
   });
 
   it('does not run their clock while play is held', async () => {

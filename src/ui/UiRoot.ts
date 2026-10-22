@@ -415,9 +415,9 @@ export class UiRoot {
     this.deciding = true;
     try {
       const choice = await decisionDialog(kind, state.setup.names[state.rack.turn], CHOICES[kind]);
-      // Online, the table may have been replaced meanwhile by the host's.
+      // Online, the table may have changed meanwhile (the host's taken, or time called).
       const now = this.app.match.current.rack;
-      if (now.phase !== 'decision' || now.decision !== kind) return;
+      if (now.phase !== 'decision' || now.decision !== kind || now.turn !== state.rack.turn) return;
       this.app.match.decide(choice);
     } finally {
       this.deciding = false;
@@ -468,6 +468,8 @@ export class UiRoot {
       return;
     }
     if (state.rack.phase !== 'over') return;
+    // Online, the next rack starts by itself on both sides at once (src/game/GamePort.ts).
+    if (state.setup.mode === 'online' && this.online) return;
     this.app.match.nextRack();
     this.app.showBalls();
     this.app.aimAtRack();

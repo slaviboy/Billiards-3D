@@ -86,6 +86,8 @@ export interface PortTable {
   localAim(): CueAim;
   /** Shows the other player's cue where their preview puts it, or stops showing it. */
   showRemoteAim(aim: CueAim | null): void;
+  /** Jumps the shot playing out on the screen to its end. */
+  finishPlayback(): void;
   /** A note for the player. */
   say(text: string): void;
   /** The table was replaced by the host's: whatever it asks of this player next (a decision). */
@@ -98,6 +100,8 @@ export const PREVIEW_MS = 125;
 export const PLAYBACK_TAIL_MS = 1000;
 /** How far past the limit (and the network allowance) the other player's clock may run. */
 export const STALL_GRACE_MS = 5000;
+/** Online, the next rack starts by itself this long after the last one has played out. */
+export const NEXT_RACK_MS = 3000;
 
 const CHOSE: Record<Choice, string> = {
   accept: 'plays the table as it lies',
@@ -133,6 +137,8 @@ export class PoolPort implements GamePort<GameMessage, PoolTerms> {
   private playbackEnd = -Infinity;
   /** The turn being timed: which, whether it is this player's, since when, and its timer. */
   private clock: { key: string; mine: boolean; since: number; timer: unknown } | null = null;
+  /** The next rack, about to start by itself. */
+  private pendingRack: { rackNumber: number; timer: unknown } | null = null;
   /** The last preview sent, to send only changes. */
   private sentAim = '';
   private sentPlace = '';
@@ -162,6 +168,7 @@ export class PoolPort implements GamePort<GameMessage, PoolTerms> {
     for (const off of this.offs.splice(0)) off();
     this.timers.clearInterval(this.previewTimer);
     this.stopClock();
+    this.cancelNextRack();
     this.listeners.clear();
     this.started = false;
   }
@@ -237,9 +244,9 @@ export class PoolPort implements GamePort<GameMessage, PoolTerms> {
     // else), so that is compared too.
     if (message.h === ownHash && message.match === own.winner) return 'same';
     if (why === 'saved') return this.take(state);
-    // The host's table is never behind this one by more than the one action that may have been
-    // lost on the way when the connection dropped (play stops while the other player is away).
-    if (state.shot < own.shot - 1) return 'rejected';
+    // The host's table may be behind this one: shots made before either side noticed the
+    // connection had dropped are lost. Only the last one is sent again; past that, the host's
+    // table stands (and the session counts it as a difference).
     if (why === 'rejoin' && this.lastOwn && this.replays(state, this.lastOwn.action, ownHash)) {
       const resend = this.lastOwn.message;
       for (const listener of this.listeners) listener.send(resend, true);
@@ -307,6 +314,8 @@ export class PoolPort implements GamePort<GameMessage, PoolTerms> {
   private async remoteShot(message: ShotMessage): Promise<Receipt> {
     await this.idle();
     const match = this.table.match;
+    // Play that crossed the end of the match (a resignation on the way) changes nothing.
+    if (match.current.winner !== null) return { kind: 'shown' };
     this.catchUp();
     const state = match.current;
     if (!shotInRange(message)) return violation('sent a shot outside what the cue can do');
@@ -350,7 +359,8 @@ export class PoolPort implements GamePort<GameMessage, PoolTerms> {
     const match = this.table.match;
     const state = match.current;
     const rack = state.rack;
-    if (state.winner !== null || rack.phase !== 'decision' || rack.decision === null) {
+    if (state.winner !== null) return { kind: 'shown' };
+    if (rack.phase !== 'decision' || rack.decision === null) {
       return violation('made a choice when none was due');
     }
     if (rack.turn !== other(this.mySeat)) return violation('made a choice that was not theirs');
@@ -366,6 +376,7 @@ export class PoolPort implements GamePort<GameMessage, PoolTerms> {
   private async remoteTimeout(n: number): Promise<Receipt> {
     await this.idle();
     const match = this.table.match;
+    if (match.current.winner !== null) return { kind: 'shown' };
     this.catchUp();
     const state = match.current;
     const turn = this.remoteTurn(state, n);
@@ -384,7 +395,7 @@ export class PoolPort implements GamePort<GameMessage, PoolTerms> {
   /** Why it is not the other player's shot `n` now, or null when it is. */
   private remoteTurn(state: MatchState, n: number): Receipt | null {
     const rack = state.rack;
-    if (state.winner !== null || (rack.phase !== 'break' && rack.phase !== 'play')) {
+    if (rack.phase !== 'break' && rack.phase !== 'play') {
       return violation('played when no shot was due');
     }
     if (rack.turn !== other(this.mySeat)) return violation('played out of turn');
@@ -393,16 +404,46 @@ export class PoolPort implements GamePort<GameMessage, PoolTerms> {
   }
 
   /**
-   * The other player may have gone on to the next rack before this player has: the next rack is
-   * the same for both, so this side goes on too.
+   * The other player may have gone on to the next rack a moment before this side (each starts it
+   * by itself, see startNextRack): the next rack is the same for both, so this side goes on too.
    */
   private catchUp(): void {
+    const state = this.table.match.current;
+    if (state.rack.phase === 'over' && state.winner === null) this.startNextRack();
+  }
+
+  private startNextRack(): void {
     const match = this.table.match;
-    const state = match.current;
-    if (state.rack.phase !== 'over' || state.winner !== null) return;
+    this.cancelNextRack();
     match.nextRack();
     this.table.showBalls();
     this.table.aimAtRack();
+    const s = match.current;
+    this.table.say(`Rack ${s.rackNumber}: ${s.setup.names[s.rack.breaker]} breaks`);
+  }
+
+  /**
+   * Online, a rack that is over leads to the next by itself, on both sides from the same moment
+   * (once its last shot has played out, and a moment to see who won it), so that the breaker's
+   * clock starts alike on both. Waiting for each player to click would start them apart.
+   */
+  private scheduleNextRack(rackNumber: number): void {
+    if (this.pendingRack?.rackNumber === rackNumber) return;
+    this.cancelNextRack();
+    const at = Math.max(this.now(), this.playbackEnd) + NEXT_RACK_MS;
+    const timer = this.timers.setTimeout(() => {
+      const s = this.table.match.current;
+      this.pendingRack = null;
+      if (s.rackNumber !== rackNumber || s.rack.phase !== 'over' || s.winner !== null) return;
+      if (this.held || !this.online()) return;
+      this.startNextRack();
+    }, at - this.now());
+    this.pendingRack = { rackNumber, timer };
+  }
+
+  private cancelNextRack(): void {
+    if (this.pendingRack) this.timers.clearTimeout(this.pendingRack.timer);
+    this.pendingRack = null;
   }
 
   /** Whether playing `action` on `state` leads to the table this side has (`hash`). */
@@ -499,20 +540,30 @@ export class PoolPort implements GamePort<GameMessage, PoolTerms> {
 
   // --- the shot clocks ---------------------------------------------------------------------------
 
+  /** Which turn it is: the clock runs per turn, and a choice the break left is a turn too. */
+  private turnKey(state: MatchState = this.table.match.current): string {
+    return `${state.rackNumber}:${state.shot}:${state.rack.turn}:${state.rack.phase}`;
+  }
+
   private onState(): void {
     if (!this.online()) return;
     const state = this.table.match.current;
     const rack = state.rack;
+    if (rack.phase === 'over' && state.winner === null && !this.held) {
+      this.scheduleNextRack(state.rackNumber);
+    } else if (this.pendingRack) {
+      this.cancelNextRack();
+    }
     const timed =
       !this.held &&
       state.setup.shotClock > 0 &&
       state.winner === null &&
-      (rack.phase === 'break' || rack.phase === 'play');
+      (rack.phase === 'break' || rack.phase === 'play' || rack.phase === 'decision');
     if (!timed) {
       if (this.clock) this.stopClock();
       return;
     }
-    const key = `${state.rackNumber}:${state.shot}:${rack.turn}:${rack.phase}`;
+    const key = this.turnKey(state);
     if (this.clock?.key === key) return;
     // A new turn: the other player's cue shows again only from their next preview.
     this.table.showRemoteAim(null);
@@ -536,8 +587,19 @@ export class PoolPort implements GamePort<GameMessage, PoolTerms> {
     if (this.clock?.key !== key || this.held || this.status() !== 'playing') return;
     this.clock = null;
     const match = this.table.match;
-    const name = match.current.setup.names[this.mySeat];
-    // The match reports the time-out, which goes to the other player as this player's own.
+    const before = match.current;
+    const name = before.setup.names[this.mySeat];
+    // The match reports what is done here, which goes to the other player as this player's own.
+    if (before.rack.phase === 'decision' && before.rack.decision) {
+      // A choice left too long takes the first one on offer: play on as the table lies, or
+      // spot the 8 and play on.
+      const choice = CHOICES[before.rack.decision][0]!;
+      match.decide(choice);
+      this.table.showBalls();
+      this.table.aimAtRack();
+      this.table.say(`Time ran out for ${name}, who ${CHOSE[choice]}`);
+      return;
+    }
     match.timeOut();
     this.table.showBalls();
     this.table.aimAtRack();
@@ -550,8 +612,10 @@ export class PoolPort implements GamePort<GameMessage, PoolTerms> {
   private stalled(key: string): void {
     if (this.clock?.key !== key || this.held || this.status() !== 'playing') return;
     this.clock = null;
+    // Judged after the messages already received: their word may be among them.
+    const still = () => this.turnKey() === key && !this.held && this.status() === 'playing';
     for (const listener of this.listeners) {
-      listener.violation('stalled', 'let its shot clock run out without saying so');
+      listener.violation('stalled', 'let its shot clock run out without saying so', still);
     }
   }
 
@@ -581,6 +645,10 @@ export class PoolPort implements GamePort<GameMessage, PoolTerms> {
   /** Waits until no shot is playing out on the screen. */
   private async idle(): Promise<void> {
     while (this.table.playing) {
+      // A screen plays at normal speed or faster, so one still playing once the shots could have
+      // played out at normal speed has stopped drawing (a tab in the background, which browsers
+      // stop animating). The match does not wait for it: that shot jumps to its end.
+      if (this.now() >= this.playbackEnd) this.table.finishPlayback();
       await new Promise<void>((resolve) => this.timers.setTimeout(resolve, 40));
     }
   }

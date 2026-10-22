@@ -146,6 +146,13 @@ export class FakeTable implements PortTable {
     this.remoteAim = aim;
   }
 
+  /** While set, the screen does not finish its playback when asked (a test holds it). */
+  stuck = false;
+
+  finishPlayback(): void {
+    if (!this.stuck) this.playing = false;
+  }
+
   say(text: string): void {
     this.notes.push(text);
   }

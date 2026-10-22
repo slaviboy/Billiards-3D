@@ -28,7 +28,7 @@
 import { Store } from '../core/Store.ts';
 import type { LinkPort } from './LinkPort.ts';
 import { OnlineMedia, type MediaOptions } from './OnlineMedia.ts';
-import { PeerGuard } from './PeerGuard.ts';
+import { PeerGuard, type Verdict } from './PeerGuard.ts';
 import {
   PROTOCOL_VERSION,
   SESSION_TYPES,
@@ -153,8 +153,12 @@ export type GameStatus = 'none' | 'playing' | 'over';
 export interface GameListener<M> {
   /** A message the local player's play produced; `changesMatch` is false for a mere preview. */
   send(message: M, changesMatch: boolean): void;
-  /** The other player's app broke a rule no single message shows (a shot clock it did not keep). */
-  violation(reason: ForfeitReason, detail: string): void;
+  /**
+   * The other player's app broke a rule no single message shows (a shot clock it did not keep).
+   * The session acts on it after the messages already received, and only if `stillTrue` (when
+   * given) says it still holds then: the awaited message may have been on its way.
+   */
+  violation(reason: ForfeitReason, detail: string, stillTrue?: () => boolean): void;
 }
 
 /** What the session needs from the game. */
@@ -350,10 +354,13 @@ export class OnlineSession<M extends WireMessage, S extends object> {
     });
     this.offLocal = this.port.onLocal({
       send: (message, changesMatch) => this.sendGame(message, changesMatch),
-      violation: (reason, detail) => this.enqueue(() => this.violation(reason, detail)),
+      violation: (reason, detail, stillTrue) =>
+        this.enqueue(() =>
+          !stillTrue || stillTrue() ? this.violation(reason, detail) : undefined,
+        ),
     });
     this.link.setHandlers({
-      message: (data) => this.enqueue(() => this.onMessage(data)),
+      message: (data) => this.onData(data),
       track: (track) => {
         if (this.verified) this.media.receive(track);
         else this.heldTracks.push(track);
@@ -408,12 +415,19 @@ export class OnlineSession<M extends WireMessage, S extends object> {
     if (!this.state.get().canClaimWin || this.port.status() !== 'playing') return;
     this.patch({ canClaimWin: false });
     await this.port.forfeit('abandoned');
-    this.save();
+    // The other player cannot be told, and coming back would bring their table back with them:
+    // the session ends here, the win with it.
+    const name = this.state.get().friendName;
+    await this.close('closed', `${name} stayed away, and you claimed the win.`);
   }
 
-  /** Gives up the match in progress; the session stays open for a rematch. */
+  /**
+   * Gives up the match in progress; the session stays open for a rematch. Only while the other
+   * player is there to hear it: their table would undo it when they came back.
+   */
   async resign(): Promise<void> {
     if (this.ended || !this.started || this.port.status() !== 'playing') return;
+    if (this.state.get().status !== 'playing') return;
     await this.port.resign();
     void this.link.send({ t: 'resign' });
     this.save();
@@ -502,9 +516,18 @@ export class OnlineSession<M extends WireMessage, S extends object> {
     this.fail(text);
   }
 
-  private async onMessage(data: unknown): Promise<void> {
+  /**
+   * Data from the other player, checked by the guard as it arrives (so its rate is the rate it
+   * was sent at, however long earlier messages take), then handled in turn.
+   */
+  private onData(data: unknown): void {
     if (this.ended || this.closing) return;
     const verdict = this.guard.check(data);
+    this.enqueue(() => this.onMessage(verdict));
+  }
+
+  private async onMessage(verdict: Verdict<SessionMessage<S> | M>): Promise<void> {
+    if (this.ended || this.closing) return;
     if (!verdict.ok) {
       if (verdict.disconnect) await this.violation('invalid-data', 'kept sending invalid data');
       return;
@@ -537,6 +560,15 @@ export class OnlineSession<M extends WireMessage, S extends object> {
 
   private async onHello(message: Hello): Promise<void> {
     if (this.verified) return;
+    const proven = this.token !== null && message.token === this.token;
+    // Once the host has handed out the token, only the one who holds it counts, in both
+    // directions; anyone else is turned away before anything they say is weighed.
+    const host = this.role === 'host';
+    if (this.token && !proven) {
+      this.dropHeldTracks();
+      this.link.kick();
+      return;
+    }
     if (message.v !== PROTOCOL_VERSION || message.build !== this.build) {
       // Not a rule break: an older or newer copy of the game, which might not play the same.
       this.dropHeldTracks();
@@ -544,14 +576,7 @@ export class OnlineSession<M extends WireMessage, S extends object> {
       await this.close('failed', RELOAD_MESSAGE);
       return;
     }
-    const proven = this.token !== null && message.token === this.token;
-    if (this.role === 'host') {
-      if (this.token && !proven) {
-        // Someone with the link, but not the guest who sat down: turned away.
-        this.dropHeldTracks();
-        this.link.kick();
-        return;
-      }
+    if (host) {
       this.trust();
       const first = this.token === null;
       if (first) {
@@ -574,12 +599,6 @@ export class OnlineSession<M extends WireMessage, S extends object> {
       this.patch({ status: 'playing', message: null, resyncing: false });
       this.emit({ kind: first ? 'joined' : 'returned' });
       this.save();
-      return;
-    }
-    // The guest: once it holds a token, the host must show the same one.
-    if (this.token && !proven) {
-      this.dropHeldTracks();
-      this.link.kick();
       return;
     }
     this.trust();
@@ -643,6 +662,12 @@ export class OnlineSession<M extends WireMessage, S extends object> {
     if (result === 'rejected') {
       return this.violation('invalid-data', 'sent a table that cannot be this match');
     }
+    if (why === 'rejoin' && result === 'restored') {
+      // Taking the host's table on a return is a difference like any other, and counts on both
+      // sides: a host cannot replace the guest's table more often by dropping out and back.
+      void this.link.send({ t: 'desync', n: 0 } as WireMessage);
+      if (this.countDesync()) return;
+    }
     this.expectSync = false;
     this.clearTimer('stepTimer');
     if (this.awaitingSync) {
@@ -697,13 +722,17 @@ export class OnlineSession<M extends WireMessage, S extends object> {
    */
   private watchStep(): void {
     this.clearTimer('stepTimer');
+    const waiting = () =>
+      (this.awaitingSync || this.expectSync || this.pendingDesync !== null) &&
+      this.verified &&
+      !this.ended;
     this.stepTimer = this.timers.setTimeout(() => {
-      const waiting = this.awaitingSync || this.expectSync || this.pendingDesync !== null;
-      if (waiting && this.verified && !this.ended) {
-        this.enqueue(() =>
-          this.violation('stalled', 'did not help bring the two tables back in step'),
-        );
-      }
+      // Judged after the messages already received: the answer may be among them.
+      this.enqueue(() =>
+        waiting()
+          ? this.violation('stalled', 'did not help bring the two tables back in step')
+          : undefined,
+      );
     }, STEP_TIMEOUT_MS);
   }
 
@@ -732,8 +761,12 @@ export class OnlineSession<M extends WireMessage, S extends object> {
   private async onRematch(): Promise<void> {
     if (!this.started || this.port.status() !== 'over') return;
     const { rematch } = this.state.get();
-    if (rematch === 'sent') await this.beginRematch();
-    else if (rematch === 'none') {
+    if (rematch === 'sent') {
+      // Our offer, accepted; or an offer of theirs crossing ours (or ours lost while they were
+      // away). Saying so again makes sure they start too; once started they ignore it.
+      void this.link.send({ t: 'rematch' });
+      await this.beginRematch();
+    } else if (rematch === 'none') {
       this.patch({ rematch: 'received' });
       this.emit({ kind: 'rematchOffered' });
     }

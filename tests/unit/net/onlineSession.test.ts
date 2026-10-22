@@ -15,7 +15,7 @@
 // they differ.
 
 import { describe, expect, it } from 'vitest';
-import { STALL_GRACE_MS } from '../../../src/game/GamePort.ts';
+import { NEXT_RACK_MS, STALL_GRACE_MS } from '../../../src/game/GamePort.ts';
 import type { PoolTerms } from '../../../src/game/gameMessages.ts';
 import { encodeShot } from '../../../src/game/shotCodec.ts';
 import {
@@ -256,7 +256,7 @@ describe('OnlineSession with 8-ball', () => {
   });
 
   it('a guest that missed the host’s shot takes the host’s table when it comes back', async () => {
-    const { a, b, links } = await game();
+    const { a, b, host, guest, links } = await game();
     links.host.losing = true;
     a.shoot();
     unplug(links.host, links.guest);
@@ -267,6 +267,9 @@ describe('OnlineSession with 8-ball', () => {
     await settle();
     expect(b.match.current.shot).toBe(1);
     expect(b.match.hash()).toBe(a.match.hash());
+    // A table taken on a return counts as a difference, on both sides alike.
+    expect(guest.state.get().desyncs).toBe(1);
+    expect(host.state.get().desyncs).toBe(1);
     await playOn(a, b, 3);
   });
 
@@ -499,5 +502,109 @@ describe('keeping the two tables in step', () => {
     }
     expect(a.match.current.winner).toBeNull();
     expect(b.match.current.winner).toBeNull();
+  });
+});
+
+describe('what happens between the two', () => {
+  it('counts the rate of messages as they arrive, not as they are handled', async () => {
+    const { a, b, host, links } = await game({ firstBreak: 1 });
+    // The host's screen is still playing something and will not stop (a tab in the background):
+    // the guest's break waits, and its previews pile up behind it.
+    a.table.playing = true;
+    a.table.stuck = true;
+    b.shoot();
+    for (let i = 0; i < 60; i++) {
+      // Eight a second, as the guest's game sends them while it lines up its next shot.
+      links.guest.sendRaw({ t: 'aim', yaw: 1000 + i, pitch: 20, speed: 2000, a: 0, b: 0, pull: 0 });
+      a.timers.advance(125);
+      await settle(2);
+    }
+    a.table.stuck = false;
+    for (let i = 0; i < 4; i++) {
+      a.timers.advance(50);
+      await settle();
+    }
+    expect(host.state.get().status).toBe('playing');
+    expect(a.match.hash()).toBe(b.match.hash());
+  });
+
+  it('starts the next rack on both sides from the same moment', async () => {
+    const { a, b } = await game({ shotClock: 30 });
+    // The rack ends alike on both sides (as a pocketed 8 would end it).
+    for (const d of [a, b]) {
+      const s = d.match.current;
+      d.match.state.set({
+        ...s,
+        score: [1, 0],
+        rack: { ...s.rack, phase: 'over', winner: 0, end: 'eight' },
+      });
+    }
+    a.timers.advance(NEXT_RACK_MS);
+    b.timers.advance(NEXT_RACK_MS);
+    await settle();
+    for (const d of [a, b]) {
+      expect(d.match.current).toMatchObject({ rackNumber: 2, rack: { phase: 'break', turn: 1 } });
+    }
+    expect(a.match.hash()).toBe(b.match.hash());
+    // The breaker's clock started alike on both: it runs out on the guest's own side first.
+    expect(a.port.clockFor(1)!.used).toBe(0);
+    expect(b.port.clockFor(1)!.used).toBe(0);
+  });
+
+  it('a claimed win ends the session, so the absent player cannot bring their table back', async () => {
+    const { a, host, links } = await game();
+    unplug(links.host, links.guest);
+    await settle();
+    a.timers.advance(CLAIM_AFTER_MS);
+    await host.claimWin();
+    expect(a.match.current.winner).toBe(0);
+    expect(host.state.get()).toMatchObject({
+      status: 'closed',
+      message: 'Ben stayed away, and you claimed the win.',
+    });
+    expect(links.host.closed).toBe(true);
+    expect(a.storage.saved).toBeNull();
+  });
+
+  it('no resigning while the other player is away (their table would undo it)', async () => {
+    const { a, guest, links } = await game();
+    unplug(links.host, links.guest);
+    await settle();
+    await guest.resign();
+    expect(a.match.current.winner).toBeNull();
+    expect(guest.state.get().status).toBe('away');
+  });
+
+  it('a rematch asked while the other player was away still starts on both sides', async () => {
+    const { a, b, host, guest, links } = await game();
+    await host.resign();
+    await settle();
+    unplug(links.host, links.guest);
+    await settle();
+    // Ana asks while Ben cannot hear it: her request is lost.
+    await host.requestRematch();
+    plug(links.host, links.guest);
+    await settle();
+    // Ben asks in turn: both start, once each.
+    await guest.requestRematch();
+    await settle();
+    expect(a.table.matches).toHaveLength(2);
+    expect(b.table.matches).toEqual(a.table.matches);
+    expect(a.match.hash()).toBe(b.match.hash());
+    expect(host.state.get().rematch).toBe('none');
+    expect(guest.state.get().rematch).toBe('none');
+  });
+
+  it('a stranger with the link and another build cannot end a session they are not part of', async () => {
+    const { host, links } = await game();
+    unplug(links.host, links.guest);
+    await settle();
+    const stranger = new MemoryLink();
+    plug(links.host, stranger);
+    await settle();
+    stranger.sendRaw({ t: 'hello', v: 1, build: 'some-other-build', name: 'Eve' });
+    await settle();
+    expect(links.host.kicked).toBe(true);
+    expect(host.state.get()).toMatchObject({ status: 'away', message: null });
   });
 });
