@@ -38,6 +38,8 @@ const EXACT_MATH = new Set([
   'fround',
   'imul',
   'PI',
+  'SQRT2',
+  'SQRT1_2',
 ]);
 
 const isDeterministic = (file: string) => DETERMINISTIC.some((rule) => rule.test(file));
