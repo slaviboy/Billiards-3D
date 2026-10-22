@@ -1,0 +1,874 @@
+/*
+ * Copyright (C) 2026 Stanislav Georgiev
+ * https://github.com/slaviboy
+ *
+ * This file is part of Pool.
+ *
+ * Pool is free software: you can redistribute it and/or modify it under the terms of the
+ * GNU General Public License as published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version. See the LICENSE file for the full terms.
+ */
+
+/*
+ * The game's own layout over the table: the players' cards along the top, the power bar on the
+ * side, the dock along the bottom, the pocket markers and the notes; and the game's dialogs. The
+ * tokens and the common parts are in modern.css.
+ */
+:root {
+  --ui-scale: 1;
+}
+
+:root[data-ui='modern'] {
+  /* The top bar: two cards with the race between them, then the buttons. */
+  .hud-top {
+    position: fixed;
+    top: max(0.8rem, env(safe-area-inset-top));
+    left: 50%;
+    transform: translateX(-50%);
+    box-sizing: border-box;
+    width: min(96rem, calc(100vw - 1.6rem));
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    padding: 0.6rem;
+    border-radius: 2rem;
+  }
+
+  .player-card {
+    flex: 1 1 0;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.5rem 1.2rem 0.5rem 0.5rem;
+    border-radius: 1.5rem;
+    background: rgba(255, 255, 255, 0.03);
+    box-shadow: none;
+    transition:
+      background 0.25s,
+      border-color 0.25s,
+      box-shadow 0.25s;
+  }
+
+  .player-card[hidden] {
+    display: none;
+  }
+
+  .player-card.seat-1 {
+    flex-direction: row-reverse;
+    padding: 0.5rem 0.5rem 0.5rem 1.2rem;
+    text-align: right;
+  }
+
+  .player-card.active {
+    border-color: var(--m-gold-line);
+    background: var(--m-gold-soft);
+    box-shadow:
+      0 0 0 1px rgba(214, 179, 106, 0.25),
+      0 0.6rem 2rem rgba(214, 179, 106, 0.12);
+  }
+
+  .player-avatar {
+    position: relative;
+    flex: none;
+    width: 4.4rem;
+    height: 4.4rem;
+  }
+
+  .player-avatar svg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    transform: rotate(-90deg);
+  }
+
+  .player-avatar circle {
+    fill: none;
+    stroke-width: 3;
+  }
+
+  .player-avatar .ring-track {
+    stroke: rgba(255, 255, 255, 0.1);
+    fill: rgba(255, 255, 255, 0.06);
+  }
+
+  .player-avatar .ring-time {
+    stroke: var(--m-gold);
+    stroke-linecap: round;
+    transition: stroke-dashoffset 0.1s linear;
+  }
+
+  .player-avatar .ring-time.off {
+    stroke: transparent;
+  }
+
+  .player-card.hurry .ring-time {
+    stroke: var(--m-danger);
+  }
+
+  .player-initial {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    font: 700 1.7rem var(--m-font);
+    color: var(--m-text);
+  }
+
+  .player-card.active .player-initial {
+    color: var(--m-gold-hi);
+  }
+
+  .player-text {
+    flex: 1;
+    min-width: 0;
+    display: grid;
+    gap: 0.3rem;
+  }
+
+  .player-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font: 600 1.4rem/1.2 var(--m-font);
+  }
+
+  .player-balls {
+    display: flex;
+    gap: 0.15rem;
+    min-height: 1.6rem;
+    align-items: center;
+    color: var(--m-muted);
+    font-size: 1.15rem;
+    white-space: nowrap;
+    overflow: hidden;
+  }
+
+  .player-card.seat-1 .player-balls {
+    justify-content: flex-end;
+  }
+
+  .ball-glyph svg {
+    width: 1.6rem;
+    height: 1.6rem;
+  }
+
+  .ball-glyph.gone {
+    opacity: 0.18;
+    filter: grayscale(1);
+  }
+
+  .player-score {
+    flex: none;
+    min-width: 2.4rem;
+    text-align: center;
+    font: 700 2.4rem/1 var(--m-font);
+    font-variant-numeric: tabular-nums;
+    color: var(--m-text);
+  }
+
+  .race {
+    flex: none;
+    padding: 0 0.6rem;
+    color: var(--m-muted);
+    font: 600 1.1rem var(--m-font);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .hud-buttons {
+    flex: none;
+    display: flex;
+    gap: 0.2rem;
+  }
+
+  .pool-ui.practice .race {
+    margin-left: auto;
+  }
+
+  /* The power bar, on the right (on the left for left-handed play). */
+  .power {
+    position: fixed;
+    right: max(0.8rem, env(safe-area-inset-right));
+    top: 50%;
+    transform: translateY(-50%);
+    box-sizing: border-box;
+    width: 6.4rem;
+    height: min(42vh, 36rem);
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    justify-items: center;
+    gap: 0.6rem;
+    padding: 1rem 0.8rem;
+    border-radius: 2rem;
+  }
+
+  .pool-ui.left-handed .power {
+    right: auto;
+    left: max(0.8rem, env(safe-area-inset-left));
+  }
+
+  .power-label,
+  .power-value {
+    color: var(--m-muted);
+    font: 600 1.05rem var(--m-font);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .power-value {
+    color: var(--m-text);
+    font-variant-numeric: tabular-nums;
+    text-transform: none;
+  }
+
+  .power-track {
+    position: relative;
+    width: 2.6rem;
+    border-radius: 1.3rem;
+    background: rgba(0, 0, 0, 0.3);
+    box-shadow: inset 0 0 0 1px var(--m-line);
+    overflow: hidden;
+    cursor: ns-resize;
+    touch-action: none;
+  }
+
+  .power-fill {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    background: linear-gradient(180deg, #7fd38a, #e3c682 55%, #e5736b);
+    background-size: 100% calc(100% / max(var(--power, 0.01), 0.01));
+    opacity: 0.85;
+    transition: height 0.08s;
+  }
+
+  /* The cue's butt, drawn back by the pull. */
+  .power-cue {
+    position: absolute;
+    left: 50%;
+    top: calc(var(--power, 0) * (100% - 1.2rem));
+    width: 0.8rem;
+    height: 1.2rem;
+    border-radius: 0.3rem;
+    background: linear-gradient(180deg, #f4efe3, #b8905a);
+    transform: translateX(-50%);
+    box-shadow: 0 0.2rem 0.6rem rgba(0, 0, 0, 0.4);
+  }
+
+  .power.pulling .power-track {
+    box-shadow:
+      inset 0 0 0 1px var(--m-gold-line),
+      0 0 1.6rem rgba(214, 179, 106, 0.25);
+  }
+
+  .power.disabled {
+    opacity: 0.5;
+  }
+
+  .power.disabled .power-track {
+    cursor: default;
+  }
+
+  /* The dock along the bottom: the spin and elevation, what is going on, the fine aim. */
+  .hud-dock {
+    position: fixed;
+    bottom: max(0.8rem, env(safe-area-inset-bottom));
+    left: 50%;
+    transform: translateX(-50%);
+    box-sizing: border-box;
+    width: min(64rem, calc(100vw - 1.6rem));
+    display: flex;
+    align-items: center;
+    gap: 1.2rem;
+    padding: 0.8rem 1.2rem 0.8rem 0.8rem;
+    border-radius: 2rem;
+  }
+
+  .pool-ui.left-handed .hud-dock {
+    flex-direction: row-reverse;
+    padding: 0.8rem 0.8rem 0.8rem 1.2rem;
+  }
+
+  .spin {
+    flex: none;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+  }
+
+  .spin.disabled {
+    opacity: 0.5;
+  }
+
+  .spin-ball {
+    position: relative;
+    width: 6.4rem;
+    height: 6.4rem;
+    border-radius: 50%;
+    background: radial-gradient(circle at 36% 30%, #ffffff, #eae5d8 45%, #b9b2a2 100%);
+    box-shadow:
+      inset 0 -0.4rem 0.8rem rgba(0, 0, 0, 0.18),
+      0 0.3rem 1rem rgba(0, 0, 0, 0.35);
+    cursor: crosshair;
+    touch-action: none;
+  }
+
+  /* Where the tip may strike without a miscue. */
+  .spin-limit {
+    position: absolute;
+    inset: 25%;
+    border: 1px dashed rgba(0, 0, 0, 0.22);
+    border-radius: 50%;
+  }
+
+  .spin-dot {
+    position: absolute;
+    width: 1.1rem;
+    height: 1.1rem;
+    border-radius: 50%;
+    background: #d23a2e;
+    box-shadow:
+      0 0 0 0.2rem rgba(255, 255, 255, 0.8),
+      0 0.1rem 0.3rem rgba(0, 0, 0, 0.4);
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+  }
+
+  .spin-elevation {
+    display: grid;
+    justify-items: center;
+    gap: 0.3rem;
+    color: var(--m-muted);
+    font: 600 1.05rem var(--m-font);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .spin-elevation input {
+    writing-mode: vertical-lr;
+    direction: rtl;
+    width: 1.8rem;
+    height: 5rem;
+    margin: 0;
+    accent-color: var(--m-gold);
+  }
+
+  /* One column that never grows past the dock for a long status line (it is cut short). */
+  .dock-middle {
+    flex: 1;
+    min-width: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.7rem;
+  }
+
+  .dock-row {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    min-height: 3.2rem;
+  }
+
+  .status {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font: 600 1.35rem var(--m-font);
+  }
+
+  .chip {
+    flex: none;
+    height: 3rem;
+    padding: 0 1.3rem;
+    border: 1px solid var(--m-line-strong);
+    border-radius: 1.5rem;
+    background: var(--m-raised);
+    color: var(--m-muted);
+    font: 600 1.2rem var(--m-font);
+    cursor: pointer;
+  }
+
+  .chip:hover {
+    background: var(--m-hover);
+  }
+
+  .chip.on {
+    border-color: var(--m-gold-line);
+    background: var(--m-gold-soft);
+    color: var(--m-gold-hi);
+  }
+
+  .chip:disabled {
+    opacity: 0.45;
+    cursor: default;
+  }
+
+  .chip[hidden],
+  .dock-action[hidden] {
+    display: none;
+  }
+
+  .dock-action {
+    flex: none;
+    height: 3rem;
+  }
+
+  .fine-aim {
+    position: relative;
+    height: 2.6rem;
+    border-radius: 1.3rem;
+    background: rgba(0, 0, 0, 0.3);
+    box-shadow: inset 0 0 0 1px var(--m-line);
+    overflow: hidden;
+    cursor: ew-resize;
+    touch-action: none;
+  }
+
+  .fine-ridges {
+    position: absolute;
+    inset: 0;
+    background-image: repeating-linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.22) 0 1px,
+      transparent 1px 0.9rem
+    );
+    mask-image: linear-gradient(90deg, transparent, #000 25%, #000 75%, transparent);
+  }
+
+  .fine-aim.disabled {
+    opacity: 0.45;
+    cursor: default;
+  }
+
+  /* Notes after a shot, under the cards. */
+  .toasts {
+    position: fixed;
+    top: calc(max(0.8rem, env(safe-area-inset-top)) + 7.4rem);
+    left: 50%;
+    transform: translateX(-50%);
+    display: grid;
+    justify-items: center;
+    gap: 0.5rem;
+    pointer-events: none;
+  }
+
+  .toast {
+    padding: 0.7rem 1.5rem;
+    border: 1px solid var(--m-line-strong);
+    border-radius: 1.6rem;
+    background: var(--m-surface-strong);
+    -webkit-backdrop-filter: var(--m-blur);
+    backdrop-filter: var(--m-blur);
+    box-shadow: var(--m-shadow);
+    font: 600 1.3rem var(--m-font);
+    white-space: nowrap;
+    animation: m-fade 0.2s ease-out;
+    transition:
+      opacity 0.3s,
+      transform 0.3s;
+  }
+
+  .toast-foul {
+    border-color: rgba(229, 115, 107, 0.5);
+    color: #ffc2bc;
+  }
+
+  .toast-good {
+    border-color: var(--m-gold-line);
+    color: var(--m-gold-hi);
+  }
+
+  .toast.leaving {
+    opacity: 0;
+    transform: translateY(-0.4rem);
+  }
+
+  /* The markers for calling the 8's pocket, placed over the pockets each frame. */
+  .pocket-picker {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+  }
+
+  .pocket-picker[hidden] {
+    display: none;
+  }
+
+  .pocket-mark {
+    position: absolute;
+    left: -2.4rem;
+    top: -2.4rem;
+    width: 4.8rem;
+    height: 4.8rem;
+    padding: 0;
+    border: 0.2rem dashed rgba(236, 209, 151, 0.85);
+    border-radius: 50%;
+    background: rgba(214, 179, 106, 0.12);
+    cursor: pointer;
+    pointer-events: auto;
+    animation: pocket-pulse 1.6s ease-in-out infinite;
+  }
+
+  .pocket-mark[hidden] {
+    display: none;
+  }
+
+  .pocket-eight {
+    display: block;
+    width: 60%;
+    height: 60%;
+    margin: auto;
+    opacity: 0;
+    transition: opacity 0.15s;
+  }
+
+  .pocket-mark.called {
+    border-style: solid;
+    border-color: var(--m-gold-hi);
+    background: rgba(214, 179, 106, 0.3);
+    animation: none;
+  }
+
+  .pocket-mark.called .pocket-eight {
+    opacity: 1;
+  }
+
+  /* Phones held upright: smaller cards, the dock across the bottom, a shorter power bar. */
+  @media (max-width: 640px) {
+    .hud-top {
+      gap: 0.4rem;
+      padding: 0.4rem;
+      border-radius: 1.6rem;
+    }
+
+    .player-card {
+      gap: 0.6rem;
+      padding: 0.4rem 0.8rem 0.4rem 0.4rem;
+    }
+
+    .player-card.seat-1 {
+      padding: 0.4rem 0.4rem 0.4rem 0.8rem;
+    }
+
+    .player-avatar {
+      width: 3.6rem;
+      height: 3.6rem;
+    }
+
+    .player-score {
+      font-size: 2rem;
+      min-width: 1.8rem;
+    }
+
+    .ball-glyph svg {
+      width: 1.2rem;
+      height: 1.2rem;
+    }
+
+    .race {
+      display: none;
+    }
+
+    .hud-buttons .m-icon-btn:nth-child(2),
+    .hud-buttons .m-icon-btn:nth-child(3) {
+      display: none;
+    }
+
+    .power {
+      width: 5.2rem;
+      height: min(34vh, 28rem);
+    }
+
+    /* The status may take two lines rather than be cut short. */
+    .status {
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+      line-clamp: 2;
+      white-space: normal;
+      font-size: 1.25rem;
+      line-height: 1.25;
+    }
+  }
+
+  /* Tooltips: above the dock's controls, beside the power bar. */
+  .hud-dock [data-tip]:hover::after,
+  .hud-dock [data-tip]:focus-visible::after {
+    top: auto;
+    bottom: calc(100% + 0.8rem);
+  }
+
+  .power[data-tip]:hover::after {
+    top: 50%;
+    left: auto;
+    right: calc(100% + 0.8rem);
+    transform: translateY(-50%);
+  }
+
+  .pool-ui.left-handed .power[data-tip]:hover::after {
+    right: auto;
+    left: calc(100% + 0.8rem);
+  }
+
+  .chip {
+    position: relative;
+  }
+
+  /* Dialogs of the game. */
+  .main-menu {
+    width: min(46rem, 92vw);
+  }
+
+  /* The brand below names the menu; the header keeps only its close button. */
+  .main-menu .panel-header .title {
+    visibility: hidden;
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 1.4rem;
+  }
+
+  .brand-ball svg {
+    width: 5.2rem;
+    height: 5.2rem;
+  }
+
+  .brand strong {
+    display: block;
+    font: 700 2.8rem/1.1 var(--m-font);
+    letter-spacing: -0.02em;
+  }
+
+  .brand small,
+  .mode-card small {
+    display: block;
+    color: var(--m-muted);
+    font: 400 1.2rem/1.4 var(--m-font);
+  }
+
+  .mode-list {
+    display: grid;
+    gap: 0.8rem;
+  }
+
+  .mode-card {
+    display: flex;
+    align-items: center;
+    gap: 1.2rem;
+    padding: 1.2rem 1.4rem;
+    border: 1px solid var(--m-line-strong);
+    border-radius: 1.6rem;
+    background: var(--m-raised);
+    color: var(--m-text);
+    text-align: left;
+    cursor: pointer;
+    transition:
+      background 0.15s,
+      border-color 0.15s;
+  }
+
+  .mode-card:hover {
+    border-color: var(--m-gold-line);
+    background: var(--m-gold-soft);
+  }
+
+  .mode-card > svg {
+    width: 1.8rem;
+    height: 1.8rem;
+    color: var(--m-muted);
+  }
+
+  .mode-icon {
+    display: grid;
+    place-items: center;
+    width: 4.4rem;
+    height: 4.4rem;
+    border-radius: 1.3rem;
+    background: rgba(214, 179, 106, 0.14);
+    color: var(--m-gold-hi);
+  }
+
+  .mode-icon svg {
+    width: 2.4rem;
+    height: 2.4rem;
+  }
+
+  .mode-text {
+    flex: 1;
+  }
+
+  .mode-text strong {
+    font: 600 1.5rem/1.3 var(--m-font);
+  }
+
+  .menu-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+  }
+
+  .menu-links .btn {
+    flex: 1 1 auto;
+  }
+
+  .name-pair {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+  }
+
+  .pause-menu {
+    width: min(34rem, 92vw);
+  }
+
+  .pause-list {
+    display: grid;
+    gap: 0.4rem;
+  }
+
+  .pause-item {
+    display: flex;
+    align-items: center;
+    gap: 1.2rem;
+    min-height: 4.4rem;
+    padding: 0 1.4rem;
+    border: 1px solid transparent;
+    border-radius: 1.3rem;
+    background: transparent;
+    color: var(--m-text);
+    font: 500 1.4rem var(--m-font);
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .pause-item svg {
+    width: 2rem;
+    height: 2rem;
+    color: var(--m-muted);
+  }
+
+  .pause-item:hover {
+    background: var(--m-hover);
+  }
+
+  .pause-item.primary {
+    border-color: var(--m-gold-line);
+    background: var(--m-gold-soft);
+    color: var(--m-gold-hi);
+  }
+
+  .pause-item.primary svg {
+    color: var(--m-gold-hi);
+  }
+
+  .choice-list {
+    display: grid;
+    gap: 0.6rem;
+  }
+
+  .choice-list .btn {
+    justify-content: flex-start;
+  }
+
+  .dialog-lead {
+    color: var(--m-muted);
+  }
+
+  .result-dialog {
+    text-align: center;
+  }
+
+  .result-trophy {
+    color: var(--m-gold-hi);
+  }
+
+  .result-trophy svg {
+    width: 5.2rem;
+    height: 5.2rem;
+    margin: 0 auto;
+  }
+
+  .result-detail {
+    color: var(--m-muted);
+  }
+
+  .result-score {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1.2rem;
+    font: 600 1.4rem var(--m-font);
+  }
+
+  .result-score strong {
+    font: 700 3.6rem/1 var(--m-font);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .result-score em {
+    color: var(--m-faint);
+    font-style: normal;
+  }
+
+  .shortcuts {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 1.25rem;
+  }
+
+  .shortcuts td {
+    padding: 0.55rem 0;
+    border-bottom: 1px solid var(--m-line);
+    vertical-align: top;
+  }
+
+  .shortcuts tr:last-child td {
+    border-bottom: 0;
+  }
+
+  .shortcuts td:first-child {
+    width: 45%;
+    padding-right: 1.2rem;
+    color: var(--m-gold-hi);
+    font-weight: 600;
+  }
+
+  .rules-dialog ul {
+    display: grid;
+    gap: 0.7rem;
+    margin: 0;
+    padding-left: 1.8rem;
+  }
+
+  .fine {
+    color: var(--m-faint);
+    font-size: 1.15rem;
+  }
+
+  .volume {
+    width: 100%;
+    accent-color: var(--m-gold);
+  }
+
+  .load-error {
+    position: fixed;
+    inset: auto 1.6rem 1.6rem;
+    padding: 1.2rem 1.6rem;
+    border-radius: 1.2rem;
+    background: rgba(120, 30, 30, 0.9);
+  }
+}
+
+/* The called-pocket markers breathe until one is chosen. */
+@keyframes pocket-pulse {
+  50% {
+    box-shadow: 0 0 0 0.6rem rgba(214, 179, 106, 0.18);
+  }
+}

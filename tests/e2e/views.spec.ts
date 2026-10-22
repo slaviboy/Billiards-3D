@@ -14,16 +14,13 @@
 // does.
 
 import { expect, test } from '@playwright/test';
-import { decodeShot } from '../../src/game/shotCodec.ts';
-import { simulate, stateHash } from '../../src/physics/index.ts';
-import { buildTable } from '../../src/table/geometry.ts';
-import { rackBalls, seedFrom } from '../../src/table/rack.ts';
-import { tableSpec } from '../../src/table/spec.ts';
+import { MatchController } from '../../src/game/MatchController.ts';
+import { encodePlacement } from '../../src/game/shotCodec.ts';
 
 const BREAK = { yaw: Math.round(0.25 * (1 << 20)), pitch: 30, speed: 6500, a: 0, b: -100 };
 
 test.beforeEach(async ({ page }) => {
-  await page.goto('./');
+  await page.goto('./?menu=0');
   await expect(page.locator('#app[data-ready="true"]')).toBeAttached();
 });
 
@@ -38,10 +35,20 @@ test('switching views keeps the game as it is', async ({ page }) => {
 });
 
 test('a break in the browser ends exactly as Node simulates it', async ({ page }) => {
-  const table = buildTable(tableSpec('9ft'));
-  const expected = stateHash(
-    simulate(rackBalls(table, seedFrom('practice')), decodeShot(BREAK), table.physics).final,
-  );
+  // The table the page opens with: practice on the 9-foot table, racked from the seed 'welcome'.
+  const match = new MatchController({
+    mode: 'practice',
+    size: '9ft',
+    race: 1,
+    shotClock: 0,
+    names: ['Player 1', 'Player 2'],
+    seed: 'welcome',
+    firstBreak: 0,
+  });
+  // The cue ball is in hand, so the page sends its place with the shot, as it would online.
+  const cue = match.current.balls[0]!;
+  match.shoot(BREAK, { pocket: null, safety: false }, encodePlacement(cue.rx, cue.ry));
+  const expected = match.hash();
   await page.evaluate(() => window.__poolDebug!.setPlaybackSpeed(8));
   const hash = await page.evaluate((code) => window.__poolDebug!.shoot(code), BREAK);
   expect(hash).toBe(expected);
