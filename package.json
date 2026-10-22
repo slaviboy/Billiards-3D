@@ -20,7 +20,8 @@
     "test:arch": "vitest run tests/architecture",
     "test:e2e": "playwright test",
     "audit": "node scripts/audit.ts",
-    "audit:dist": "node scripts/audit.ts dist"
+    "audit:dist": "node scripts/audit.ts dist",
+    "models": "node scripts/build-models.mjs"
   },
   "dependencies": {
     "qrcode-generator": "2.0.4",

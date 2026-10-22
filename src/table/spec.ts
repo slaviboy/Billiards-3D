@@ -76,13 +76,21 @@ const NOSE_HEIGHT = 0.635 * 2 * BALL_RADIUS;
 const CUSHION_WIDTH = 2 * INCH;
 const RAIL_HEIGHT = 1.75 * INCH;
 
-/** Rubber cross-section shared by both tables (the K66-like triangle of a modern cushion). */
+/**
+ * Rubber cross-section shared by both tables (the K66-like triangle of a modern cushion, its nose
+ * rounded under the cloth): the nose point first, then over the top to the featherstrip, down the
+ * back, and along the undercut back to the nose. Only the nose point is at nose height.
+ */
 const PROFILE: readonly (readonly [number, number])[] = [
   [0, NOSE_HEIGHT],
-  [0.0025, NOSE_HEIGHT + 0.0042],
+  [0.0006, NOSE_HEIGHT + 0.0019],
+  [0.0022, NOSE_HEIGHT + 0.0035],
+  [0.005, NOSE_HEIGHT + 0.0044],
   [CUSHION_WIDTH, RAIL_HEIGHT - 0.0015],
   [CUSHION_WIDTH, 0.0045],
-  [0.007, NOSE_HEIGHT - 0.0075],
+  [0.013, 0.0115],
+  [0.0032, NOSE_HEIGHT - 0.0062],
+  [0.0007, NOSE_HEIGHT - 0.0021],
 ];
 
 const POCKETS = {

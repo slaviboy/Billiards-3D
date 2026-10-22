@@ -38,12 +38,13 @@ for (let n = 0; n <= 15; n++) {
       let b = 0;
       for (let sj = 0; sj < SS; sj++) {
         for (let si = 0; si < SS; si++) {
-          // Blender's UV sphere: u runs with longitude around +Z (Blender's up), v from the
-          // south pole (0) to the north (1). The image's first row is v = 1. The ball's own frame
-          // (markings.ts) has its band around +Y; in Blender terms that axis is +Z.
+          // Blender's UV sphere: u runs with longitude around +Z (Blender's up), starting at −X
+          // (checked by rendering), v from the south pole (0) to the north (1). The image's first
+          // row is v = 1. The ball's own frame (markings.ts) has its band around +Y; in Blender
+          // terms that axis is +Z.
           const u = (i + (si + 0.5) / SS) / width;
           const v = 1 - (j + (sj + 0.5) / SS) / height;
-          const lon = u * 2 * Math.PI;
+          const lon = u * 2 * Math.PI + Math.PI;
           const lat = (v - 0.5) * Math.PI;
           const bx = Math.cos(lat) * Math.cos(lon);
           const by = Math.cos(lat) * Math.sin(lon);
