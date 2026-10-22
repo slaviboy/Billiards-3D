@@ -19,9 +19,11 @@ import expected from '../fixtures/determinism-hashes.json' with { type: 'json' }
 test('simulates the suite exactly as Node does', async ({ page }) => {
   await page.goto('./');
   const outcome = await page.evaluate(async () => {
-    const { determinismSuite } = await import('/src/physics/selfcheck.ts');
-    const { buildTable } = await import('/src/table/geometry.ts');
-    const { tableSpec } = await import('/src/table/spec.ts');
+    // Served by the Vite dev server; the paths are the page's, not this file's.
+    const load = (path: string) => import(/* @vite-ignore */ path);
+    const { determinismSuite } = await load('/src/physics/selfcheck.ts');
+    const { buildTable } = await load('/src/table/geometry.ts');
+    const { tableSpec } = await load('/src/table/spec.ts');
     return {
       '7ft': determinismSuite(buildTable(tableSpec('7ft')).physics),
       '9ft': determinismSuite(buildTable(tableSpec('9ft')).physics),

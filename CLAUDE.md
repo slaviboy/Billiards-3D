@@ -51,6 +51,21 @@ machine is shared with other work: never start the whole suite, or a second run,
 
 ## Rules that keep the game correct
 
+- **The simulation is deterministic.** Both players simulate every shot and must agree to the last
+  bit. `src/physics`, `src/table`, `src/rules` and `src/game/shotCodec.ts` use only exactly rounded
+  arithmetic (`+ - * /`, `Math.sqrt` and the exact `Math` helpers); sines and exponentials come from
+  `src/physics/dmath.ts`; no clocks, random numbers, DOM or outside imports. ESLint and
+  `tests/architecture/determinism.test.ts` enforce it, and
+  `npx playwright test -c playwright.determinism.config.ts` checks Chromium, Firefox and WebKit
+  against Node's results (`tests/fixtures/determinism-hashes.json`; regenerate with
+  `node scripts/determinism-hashes.ts` only after an intended physics change).
+- **One table, everywhere.** `src/table/` describes the tables once. The simulation uses it
+  directly, and the Blender model is built from `blender/table-geometry-*.json`, which
+  `node scripts/export-table.ts` writes from it (a unit test fails while they are stale).
+- **The physics is pooltool's.** `src/physics` translates pooltool 0.6.0's default models; files
+  with translated code name their source. Changes to the models are documented in
+  `docs/physics.md`.
+
 - **Online, each side referees what it receives.** Everything from the other player passes
   `PeerGuard` (size, rate, shape), `OnlineSession` (who may say what, when) and the match controller
   (whose turn, which shot, legal values and placement). Each side simulates the shot and judges the
