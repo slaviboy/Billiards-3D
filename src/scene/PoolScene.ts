@@ -36,6 +36,7 @@ import {
 } from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { RectAreaLightUniformsLib } from 'three/addons/lights/RectAreaLightUniformsLib.js';
+import { fixRectAreaLights } from './shaderFixes.ts';
 
 /** Called every frame with the elapsed seconds; returns true while it still needs frames. */
 export type FrameUpdater = (deltaSeconds: number) => boolean;
@@ -89,6 +90,7 @@ export class PoolScene {
     // stand between the player and the table. Their light, and their shapes in the balls' gloss,
     // remain.
     RectAreaLightUniformsLib.init();
+    fixRectAreaLights();
     const lamps = new Group();
     lamps.name = 'lamps';
     for (const z of [-0.85, 0, 0.85]) {

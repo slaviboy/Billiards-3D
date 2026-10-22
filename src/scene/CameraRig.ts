@@ -247,8 +247,12 @@ export class CameraRig {
     this.turn = null;
   }
 
-  /** Per frame: eases toward the goal; true while still moving. */
+  /**
+   * Per frame: eases toward the goal; true when the view changed and must be drawn. At rest it does
+   * nothing, so a still table is not drawn again and again.
+   */
   update(dt: number): boolean {
+    if (!this.moving) return false;
     const k = 1 - Math.exp(-12 * dt);
     const turn = this.turn;
     if (turn) {
@@ -272,9 +276,8 @@ export class CameraRig {
       this.blend =
         target > this.blend ? Math.min(1, this.blend + step) : Math.max(0, this.blend - step);
     }
-    const moving = this.moving;
     this.apply();
-    return moving;
+    return true;
   }
 
   /** Whether the free area is wider than tall (then the top view lays the table lengthwise). */
