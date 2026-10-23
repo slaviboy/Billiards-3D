@@ -12,8 +12,9 @@
 // Large player cards, for video calls: beside the table on a computer, a tablet or a phone on its
 // side, side by side under the buttons on a phone held upright. With a picture on both cards and
 // the widest row of balls, nothing spills off the screen or over the other controls, the pictures
-// are large, and the pockets and the cue ball stay in sight. The switch in Settings moves the
-// cards, and a picture playing goes with them.
+// are large, and the pockets and the cue ball stay in sight. Small cards in a call on a phone held
+// upright grow the top bar for square pictures. The switch in Settings moves the cards, and a
+// picture playing goes with them.
 
 import { expect, test, type Page } from '@playwright/test';
 import { covered, settle } from '../support/screen.ts';
@@ -40,12 +41,12 @@ async function startMatch(page: Page, settings: object = LARGE) {
 
 /**
  * What the online play does when pictures arrive, for the second player at this device: a picture
- * on each card, the second player's microphone and camera switches beside that widest row, and the
- * first player's speaker switch.
+ * on each card (or on those of `seats`), the second player's microphone and camera switches beside
+ * that widest row, and the first player's speaker switch.
  */
-async function showPictures(page: Page) {
-  await page.evaluate(() => {
-    for (const seat of [0, 1]) {
+async function showPictures(page: Page, seats: readonly number[] = [0, 1]) {
+  await page.evaluate((seats) => {
+    for (const seat of seats) {
       const card = document.querySelector<HTMLElement>(`[data-testid="player-${seat}"]`)!;
       const video = card.querySelector('video')!;
       const canvas = document.createElement('canvas');
@@ -68,7 +69,7 @@ async function showPictures(page: Page) {
       speaker!.hidden = seat === 1;
       controls.querySelector<HTMLElement>('.card-media-silent')!.hidden = true;
     }
-  });
+  }, seats);
 }
 
 /** Everything wrong with the layout: parts off the screen, over each other, or cut short. */
@@ -141,6 +142,71 @@ for (const [name, width, height, touch, upright, settings] of [
     });
   });
 }
+
+// Small cards on a phone held upright: in a call the top bar grows, each picture a large square
+// with the name and the balls under it, the initial in the square of a player without a camera.
+test.describe('a video call on a phone held upright, the cards in the top bar', () => {
+  test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+  const SMALL = { largeCards: false, menuBar: false };
+
+  /** Each card's square, its name and its balls, and where the bar ends. */
+  async function layout(page: Page) {
+    return page.evaluate(() => {
+      const box = (e: Element) => e.getBoundingClientRect().toJSON() as DOMRect;
+      const bar = box(document.querySelector('.hud-top')!);
+      const cards = [0, 1].map((seat) => {
+        const card = document.querySelector(`[data-testid="player-${seat}"]`)!;
+        const name = card.querySelector<HTMLElement>('.player-name')!;
+        const balls = card.querySelector<HTMLElement>('.player-balls')!;
+        const initial = card.querySelector<HTMLElement>('.player-initial')!;
+        return {
+          square: box(card.querySelector('.player-avatar')!),
+          name: box(name),
+          balls: box(balls),
+          cut: name.scrollWidth > name.clientWidth + 1 || balls.scrollWidth > balls.clientWidth + 1,
+          initial: getComputedStyle(initial).display !== 'none',
+        };
+      });
+      return { bar, cards };
+    });
+  }
+
+  test('shows each picture as a large square, the name and the balls under it', async ({
+    page,
+  }) => {
+    await startMatch(page, SMALL);
+    await showPictures(page);
+    await settle(page);
+    expect(await covered(page)).toEqual([]);
+    const { bar, cards } = await layout(page);
+    expect(bar.right).toBeLessThanOrEqual(390);
+    for (const [seat, card] of cards.entries()) {
+      const { square, name, balls } = card;
+      expect(square.width).toBeGreaterThanOrEqual(140);
+      expect(Math.abs(square.width - square.height)).toBeLessThanOrEqual(1);
+      expect(name.top).toBeGreaterThanOrEqual(square.bottom);
+      expect(balls.top).toBeGreaterThanOrEqual(name.bottom - 1);
+      expect(balls.bottom).toBeLessThanOrEqual(bar.bottom);
+      expect(card.cut).toBe(false);
+      const picture = (await page.getByTestId(`player-${seat}`).locator('video').boundingBox())!;
+      expect(picture.width).toBeGreaterThanOrEqual(square.width - 10);
+    }
+  });
+
+  test("with one camera on, shows the other player's initial in a square alike", async ({
+    page,
+  }) => {
+    await startMatch(page, SMALL);
+    const before = await layout(page);
+    expect(before.cards[0]!.square.width).toBeLessThan(50);
+    await showPictures(page, [1]);
+    const { cards } = await layout(page);
+    expect(cards[0]!.square.width).toBeGreaterThanOrEqual(140);
+    expect(cards[0]!.square.width).toBeCloseTo(cards[1]!.square.width, 0);
+    expect(cards[0]!.initial).toBe(true);
+    expect(cards[1]!.initial).toBe(false);
+  });
+});
 
 test('the switch in Settings moves the cards, the picture playing with them', async ({ page }) => {
   await startMatch(page, { largeCards: false, menuBar: false });

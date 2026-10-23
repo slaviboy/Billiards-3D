@@ -9,11 +9,12 @@
  * License, or (at your option) any later version. See the LICENSE file for the full terms.
  */
 
-// Video and voice on a player's card, kept small and out of the table's way: the picture fills the
-// card's round avatar (or, on a large card, its top), and the switches sit beside the name. The player's own card shows their
-// camera (mirrored, like a mirror) and the microphone and camera switches; the other player's card
-// shows their camera while pictures arrive, and a switch to mute them on this device. Videos never
-// play sound: the other player's voice comes from one audio element kept by the online play.
+// Video and voice on a player's card, kept out of the table's way: the picture fills the card's
+// round avatar (a square one, in a taller top bar, on a phone held upright; on a large card, its
+// top), and the switches sit beside the name. The player's own card shows their camera (mirrored,
+// like a mirror) and the microphone and camera switches; the other player's card shows their
+// camera while pictures arrive, and a switch to mute them on this device. Videos never play sound:
+// the other player's voice comes from one audio element kept by the online play.
 
 import type { Seat } from '../rules/types.ts';
 import type { DeviceState } from '../net/OnlineMedia.ts';

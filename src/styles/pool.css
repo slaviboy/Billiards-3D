@@ -1710,6 +1710,132 @@
     }
   }
 
+  /*
+   * A video call on a phone held upright, the cards in the top bar: the bar grows, and while either
+   * camera shows, each card's avatar is a square picture (the player's initial in it while their
+   * camera is off) with the name, the racks and the balls under it. The switches lie over the
+   * picture's lower corner, the clock runs round its edge, and the buttons stand in a column at
+   * the bar's end, leaving the pictures its width. (Large cards live in .hud-players, so only
+   * small ones match.)
+   */
+  @media (max-width: 640px) and (orientation: portrait) {
+    .hud-top:has(.video-on) .hud-buttons {
+      flex-direction: column;
+    }
+
+    .hud-top:has(.video-on) .player-card {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      grid-template-areas:
+        'avatar avatar'
+        'name score'
+        'balls balls';
+      align-items: center;
+      gap: 0.4rem 0.6rem;
+      padding: 0.4rem 0.4rem 0.6rem;
+    }
+
+    .hud-top:has(.video-on) .player-card.seat-1 {
+      grid-template-columns: auto minmax(0, 1fr);
+      grid-template-areas:
+        'avatar avatar'
+        'score name'
+        'balls balls';
+    }
+
+    .hud-top:has(.video-on) .player-text {
+      display: contents;
+    }
+
+    .hud-top:has(.video-on) .player-name {
+      grid-area: name;
+      padding: 0 0.2rem;
+    }
+
+    .hud-top:has(.video-on) .player-score {
+      grid-area: score;
+      padding: 0 0.2rem;
+    }
+
+    .hud-top:has(.video-on) .player-balls {
+      grid-area: balls;
+      justify-content: center;
+    }
+
+    .hud-top:has(.video-on) .ball-glyph {
+      width: 1.4rem;
+      height: 1.4rem;
+    }
+
+    .hud-top:has(.video-on) .player-avatar {
+      --clock-color: var(--m-gold);
+      grid-area: avatar;
+      width: 100%;
+      height: auto;
+      aspect-ratio: 1;
+      border-radius: 1.2rem;
+      background: radial-gradient(circle at 34% 28%, #3b3e47, #1b1d22 72%);
+    }
+
+    .hud-top:has(.video-on) .player-card.hurry .player-avatar {
+      --clock-color: var(--m-danger);
+    }
+
+    /* The clock's ring, and the group's ball (the balls under the picture show the group). */
+    .hud-top:has(.video-on) .player-avatar svg,
+    .hud-top:has(.video-on) .player-badge {
+      display: none;
+    }
+
+    /* The clock as the square's edge, gold as far round as the time left reaches. */
+    .hud-top:has(.video-on) .player-avatar::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      padding: 0.25rem;
+      border-radius: inherit;
+      background: conic-gradient(var(--clock-color) calc(var(--clock, 0) * 1turn), transparent 0);
+      -webkit-mask:
+        linear-gradient(#000 0 0) content-box,
+        linear-gradient(#000 0 0);
+      -webkit-mask-composite: xor;
+      mask:
+        linear-gradient(#000 0 0) content-box exclude,
+        linear-gradient(#000 0 0);
+      pointer-events: none;
+    }
+
+    .hud-top:has(.video-on) .player-initial {
+      font: 600 4.8rem var(--m-serif);
+    }
+
+    .hud-top:has(.video-on) .m-avatar-video {
+      border-radius: 0.9rem;
+    }
+
+    .hud-top:has(.video-on) .card-media {
+      grid-area: avatar;
+      align-self: end;
+      justify-self: start;
+      z-index: 1;
+      margin: 0.6rem;
+      padding: 0.1rem;
+      border-radius: 1rem;
+      background: rgba(10, 11, 14, 0.55);
+      -webkit-backdrop-filter: blur(0.6rem);
+      backdrop-filter: blur(0.6rem);
+    }
+
+    .hud-top:has(.video-on) .player-card.seat-1 .card-media {
+      justify-self: end;
+    }
+
+    .hud-top:has(.video-on) .m-media-btn.m-icon-btn:not([aria-pressed='true'], .blocked),
+    .hud-top:has(.video-on) .card-media-silent {
+      color: var(--m-text);
+    }
+  }
+
   /* A phone with the menu bar: tighter menus, and with small cards a row of their own over them. */
   @media (max-width: 640px) {
     .menubar-item {

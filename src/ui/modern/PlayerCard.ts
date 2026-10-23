@@ -13,10 +13,11 @@
 // group as a ball on its corner; the name; the racks won; and the group's balls, pictured as the
 // table's own, those pocketed bright and those still on the table faint, with the 8 at the end,
 // ringed once it is the player's to shoot. It glows while it is the player's turn. It is small, in
-// the top bar, with a camera's picture inside the round avatar; or large, on its own beside the
-// table (in a row on a phone held upright), with the picture across its top like a call's, the
-// group and its count under the name, the race to win as pips under the racks, and the balls in a
-// rail like a table's ball return.
+// the top bar, with a camera's picture inside the round avatar (in a call on a phone held upright
+// the avatar grows to a square picture, the clock running round its edge, with the name and the
+// balls under it); or large, on its own beside the table (in a row on a phone held upright), with
+// the picture across its top like a call's, the group and its count under the name, the race to
+// win as pips under the racks, and the balls in a rail like a table's ball return.
 
 import type { Group, Seat } from '../../rules/types.ts';
 import { ballImage } from '../ballPreview.ts';
@@ -87,8 +88,9 @@ export class PlayerCard {
   }
 
   /**
-   * Online: the player's camera (inside the round avatar, so the top bar keeps its height, or across
-   * the top of a large card), and the microphone, camera and speaker switches beside the score.
+   * Online: the player's camera (inside the avatar, round so the top bar keeps its height, or square
+   * on a phone held upright, the bar growing for it; or across the top of a large card), and the
+   * microphone, camera and speaker switches beside the score.
    */
   attachMedia(video: HTMLVideoElement, controls: HTMLElement): void {
     this.video = video;
@@ -130,6 +132,11 @@ export class PlayerCard {
       this.ring.classList.toggle('off', false);
       this.ring.style.strokeDashoffset = String(RING * (1 - view.clock));
     }
+    // Where the avatar is a call's square picture, the clock runs round its edge (pool.css).
+    this.avatar.style.setProperty(
+      '--clock',
+      view.clock === null || !view.active ? '0' : String(view.clock),
+    );
     const key = [
       view.name,
       view.score,
