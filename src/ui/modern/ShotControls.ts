@@ -449,7 +449,8 @@ export class FineAim {
     this.element.dataset.tip = 'Fine aim: drag sideways (, and .)';
     this.element.setAttribute('aria-label', 'Fine aim: drag sideways');
     const ridges = el('div', 'fine-ridges');
-    this.element.append(ridges);
+    // A fixed mark at the middle, the ridges turning past it like a dial's.
+    this.element.append(ridges, el('div', 'fine-mark'));
     this.element.addEventListener('pointerdown', (event) => {
       if (!this.enabled()) return;
       event.preventDefault();

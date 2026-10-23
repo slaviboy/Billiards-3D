@@ -722,16 +722,20 @@
     gap: 0.4rem;
   }
 
+  /* The wheel and its step buttons as tall as the cue's elevation slider beside them. */
   .dock-aim .fine-aim {
     flex: 1 1 auto;
     min-width: 6rem;
+    height: 5.4rem;
+    border-radius: 1.2rem;
   }
 
   .step-btn.m-icon-btn {
     flex: none;
-    width: 2.8rem;
-    height: 2.8rem;
+    width: 3rem;
+    height: 5.4rem;
     border: 1px solid var(--m-line);
+    border-radius: 1.2rem;
     background: var(--m-raised);
   }
 
@@ -814,15 +818,33 @@
     touch-action: none;
   }
 
+  /* Ridges round a drum, shaded darker toward its top and bottom edges. */
   .fine-ridges {
     position: absolute;
     inset: 0;
-    background-image: repeating-linear-gradient(
-      90deg,
-      rgba(255, 255, 255, 0.22) 0 1px,
-      transparent 1px 0.9rem
-    );
+    background-image:
+      linear-gradient(
+        180deg,
+        rgba(0, 0, 0, 0.5),
+        rgba(255, 255, 255, 0.05) 32%,
+        rgba(255, 255, 255, 0.05) 68%,
+        rgba(0, 0, 0, 0.5)
+      ),
+      repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.22) 0 1px, transparent 1px 0.9rem);
     mask-image: linear-gradient(90deg, transparent, #000 25%, #000 75%, transparent);
+  }
+
+  .fine-mark {
+    position: absolute;
+    left: 50%;
+    top: 22%;
+    bottom: 22%;
+    width: 0.2rem;
+    border-radius: 0.1rem;
+    background: var(--m-gold);
+    box-shadow: 0 0 0.5rem rgba(214, 179, 106, 0.6);
+    transform: translateX(-50%);
+    pointer-events: none;
   }
 
   .fine-aim.disabled {
@@ -1004,7 +1026,6 @@
 
     .step-btn.m-icon-btn {
       width: 2.4rem;
-      height: 2.4rem;
     }
 
     .dock-aim .fine-aim {
