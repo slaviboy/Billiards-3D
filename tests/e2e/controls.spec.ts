@@ -159,6 +159,44 @@ test('the keys move the camera as on the chess board', async ({ page }) => {
   expect(await debug(page, () => window.__poolDebug!.view())).toBe('3d');
 });
 
+test('in the top view a drag round the table turns it one way all the way round', async ({
+  page,
+}) => {
+  await page.keyboard.press('t');
+  await settle(page);
+  // Round the point the view turns about (the table's middle), clockwise on screen, a full turn,
+  // right button down so the drag turns wherever it passes.
+  const centre = await at(page, W / 2, L / 2);
+  const radius = Math.min(page.viewportSize()!.width, page.viewportSize()!.height) * 0.3;
+  const point = (a: number) => ({
+    x: centre.x + radius * Math.cos(a),
+    y: centre.y + radius * Math.sin(a),
+  });
+  // Where a corner of the table lies on screen, as an angle round the middle (clockwise).
+  const corner = async () => {
+    const p = await at(page, 0, 0);
+    return Math.atan2(p.y - centre.y, p.x - centre.x);
+  };
+  await page.mouse.move(point(0).x, point(0).y);
+  await page.mouse.down({ button: 'right' });
+  let last = await corner();
+  let turned = 0;
+  // Twelve steps of 30°: the software renderer takes seconds to settle after each.
+  for (let k = 1; k <= 12; k++) {
+    const p = point((k * 2 * Math.PI) / 12);
+    await page.mouse.move(p.x, p.y, { steps: 4 });
+    await settle(page);
+    const now = await corner();
+    const step = Math.atan2(Math.sin(now - last), Math.cos(now - last));
+    // Every part of the circle turns the table the way the hand goes, as far as it went.
+    expect(step, `step ${k}`).toBeGreaterThan(0.4);
+    turned += step;
+    last = now;
+  }
+  await page.mouse.up({ button: 'right' });
+  expect(turned).toBeCloseTo(2 * Math.PI, 1);
+});
+
 test('the cloth aims with the mouse, Shift and the arrows aim, I J K L spin', async ({ page }) => {
   const cue = await debug(page, () => window.__poolDebug!.cueBall());
   // Press on the cloth to the cue ball's right: the cue points there.

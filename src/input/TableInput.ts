@@ -19,6 +19,7 @@
 //   a rail's corner  turns and tilts the view (so does the floor round the table).
 //   a rail's side    pans: the grabbed point of the table stays under the pointer.
 //   right button     turns and tilts, anywhere; the middle button pans.
+//                    In the top view, turning drags turn the table round like a dial.
 //   wheel            zooms.
 //   two fingers      twist to turn, pinch to zoom, move up and down to tilt (in the top view, to
 //                    pan), sideways to pan.
@@ -33,6 +34,8 @@ const R = BALL_RADIUS;
 const DEG = Math.PI / 180;
 const ROTATE_PER_PIXEL = 0.35 * DEG;
 const TILT_PER_PIXEL = 0.25 * DEG;
+/** How near the point the top view turns about a drag may come and still turn it, CSS pixels. */
+const PIVOT_CLEARANCE = 24;
 /** How far along each rail from a corner the corner's turning handle reaches, metres. */
 const CORNER_REACH = 0.14;
 
@@ -99,6 +102,8 @@ export class TableInput {
   private readonly plane = new Plane(new Vector3(0, 1, 0), -R);
   private readonly ndc = new Vector2();
   private readonly hit = new Vector3();
+  private readonly eye = new Vector3();
+  private readonly look = new Vector3();
   private readonly table = { x: 0, y: 0, z: 0 };
   enabled = true;
 
@@ -123,6 +128,35 @@ export class TableInput {
     );
     this.raycaster.setFromCamera(this.ndc, this.handlers.camera());
     return this.raycaster.ray.intersectPlane(this.plane, out);
+  }
+
+  /** Where on screen the point the view turns about lies: the cloth's point it looks at. */
+  private pivot(): { x: number; y: number } | null {
+    const camera = this.handlers.camera();
+    camera.getWorldPosition(this.eye);
+    camera.getWorldDirection(this.look);
+    if (this.look.y > -1e-6) return null;
+    this.eye.addScaledVector(this.look, -this.eye.y / this.look.y).project(camera);
+    const rect = this.element.getBoundingClientRect();
+    return {
+      x: rect.left + ((this.eye.x + 1) / 2) * rect.width,
+      y: rect.top + ((1 - this.eye.y) / 2) * rect.height,
+    };
+  }
+
+  /**
+   * The angle a pointer moving between two screen points sweeps round the pivot, clockwise on
+   * screen, or null when either point is too near the pivot for its direction to mean anything.
+   */
+  private sweep(x0: number, y0: number, x1: number, y1: number): number | null {
+    const pivot = this.pivot();
+    if (!pivot) return null;
+    const ax = x0 - pivot.x;
+    const ay = y0 - pivot.y;
+    const bx = x1 - pivot.x;
+    const by = y1 - pivot.y;
+    if (Math.hypot(ax, ay) < PIVOT_CLEARANCE || Math.hypot(bx, by) < PIVOT_CLEARANCE) return null;
+    return wrapAngle(Math.atan2(by, bx) - Math.atan2(ay, ax));
   }
 
   /** The table point under a screen point, or null if the ray misses the plane. */
@@ -239,11 +273,20 @@ export class TableInput {
     if (event.pointerId !== this.dragPointer) return;
     switch (drag.kind) {
       case 'rotate': {
-        const dx = event.clientX - drag.lastX;
-        const dy = event.clientY - drag.lastY;
+        const { lastX, lastY } = drag;
         drag.lastX = event.clientX;
         drag.lastY = event.clientY;
-        this.handlers.orbit(-dx * ROTATE_PER_PIXEL, dy * TILT_PER_PIXEL);
+        if (this.handlers.tilts()) {
+          const dx = event.clientX - lastX;
+          const dy = event.clientY - lastY;
+          this.handlers.orbit(-dx * ROTATE_PER_PIXEL, dy * TILT_PER_PIXEL);
+          return;
+        }
+        // The top view turns like a dial: by the angle the pointer sweeps round the point the
+        // view turns about, so the table follows the hand all the way round, whichever corner it
+        // holds (going by sideways movement alone, it turned back halfway round).
+        const turn = this.sweep(lastX, lastY, event.clientX, event.clientY);
+        if (turn !== null) this.handlers.orbit(turn, 0);
         return;
       }
       case 'pan': {
