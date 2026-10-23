@@ -9,20 +9,22 @@
  * License, or (at your option) any later version. See the LICENSE file for the full terms.
  */
 
-// The interface over the table: the players' cards and the buttons along the top (or, with large
-// cards, the cards beside the table), the power bar on one side, the dock with the spin, the fine
-// aim and what is going on along the bottom, the pocket markers for calling the 8, and the notes
-// after each shot. It runs the keyboard, the shot clock and the turns of a match on this device
-// (decisions, the end of a rack, rematches), and tells the camera which parts of the screen it
-// covers, so the table is framed in the rest.
+// The interface over the table: the menu bar (or a menu button), the players' cards and the
+// buttons along the top (or, with large cards, the cards beside the table), the power bar on one
+// side, the dock with the spin, the fine aim and what is going on along the bottom, the pocket
+// markers for calling the 8, and the notes after each shot. It runs the keyboard, the shot clock
+// and the turns of a match on this device (decisions, the end of a rack, rematches), and tells the
+// camera which parts of the screen it covers, so the table is framed in the rest.
 
 import type { App } from '../app/App.ts';
+import { SPEEDS, type Settings } from '../app/Settings.ts';
 import type { MatchSetup, MatchState, ShotResult } from '../game/MatchController.ts';
 import { commandFor, type Command } from '../input/shortcuts.ts';
 import { other } from '../rules/eightBall.ts';
 import { CHOICES, type Foul, type Seat } from '../rules/types.ts';
 import { dialogOpen, el } from './Dialog.ts';
 import {
+  CLOTH_NAMES,
   controlsDialog,
   decisionDialog,
   mainMenu,
@@ -32,9 +34,10 @@ import {
   rulesDialog,
   settingsDialog,
 } from './dialogs.ts';
-import { LINE_ICONS } from './icons.ts';
+import { EIGHT_BALL, LINE_ICONS } from './icons.ts';
 import type { OnlineHooks } from './online/hooks.ts';
 import { iconButton } from './modern/controls.ts';
+import { MenuBar, type Menu, type MenuItem } from './modern/MenuBar.ts';
 import { PlayerCard } from './modern/PlayerCard.ts';
 import { PocketPicker } from './modern/PocketPicker.ts';
 import { FineAim, MAX_TIP, PowerBar, SpinPad } from './modern/ShotControls.ts';
@@ -72,6 +75,10 @@ export class UiRoot {
   private readonly safety: HTMLButtonElement;
   private readonly action: HTMLButtonElement;
   private readonly viewButton: HTMLButtonElement;
+  private readonly menuButton: HTMLButtonElement;
+  private readonly menuBar: MenuBar;
+  /** The game's name and the menu bar, at the start of the top bar when the bar is chosen. */
+  private readonly menuHead: HTMLElement;
   private readonly picker: PocketPicker;
   private readonly toasts = new Toasts();
   private readonly top: HTMLElement;
@@ -100,21 +107,38 @@ export class UiRoot {
 
     this.element = el('div', 'm-ui pool-ui');
 
-    // Along the top: the cards with the race between them, and the buttons.
+    // Along the top: the menu bar (when chosen), the cards with the race between them, and the
+    // buttons, the last of them the menu's when there is no bar.
     this.top = el('div', 'm-topbar hud-top');
+    this.menuBar = new MenuBar(
+      this.menus(),
+      () => this.app.settings.get().menuBar && !dialogOpen(),
+    );
+    this.menuHead = el('div', 'hud-menus');
+    const brand = el('div', 'm-brand');
+    brand.setAttribute('aria-label', 'Pool');
+    brand.innerHTML = `<span class="m-brand-mark">${EIGHT_BALL}</span><span class="m-brand-name" aria-hidden="true">Pool</span>`;
+    this.menuHead.append(brand, this.menuBar.element);
     this.cards = [new PlayerCard(0), new PlayerCard(1)];
     this.race = el('div', 'race');
     this.viewButton = iconButton(LINE_ICONS.topView, 'Top view (T)', () =>
       this.run({ kind: 'toggleView' }),
     );
+    this.menuButton = iconButton(LINE_ICONS.menu, 'Menu (Esc)', () => void this.pause());
     const buttons = el('div', 'hud-buttons m-topbar-end');
     buttons.append(
       this.viewButton,
       iconButton(LINE_ICONS.restart, 'Reset the view (Home)', () => this.run({ kind: 'home' })),
       iconButton(LINE_ICONS.fullscreen, 'Full screen', () => this.toggleFullscreen()),
-      iconButton(LINE_ICONS.menu, 'Menu (Esc)', () => void this.pause()),
+      this.menuButton,
     );
-    this.top.append(this.cards[0].element, this.race, this.cards[1].element, buttons);
+    this.top.append(
+      this.menuHead,
+      this.cards[0].element,
+      this.race,
+      this.cards[1].element,
+      buttons,
+    );
     this.players = el('div', 'hud-players');
     this.players.hidden = true;
 
@@ -207,6 +231,10 @@ export class UiRoot {
     app.match.state.subscribe(() => this.render());
     app.settings.subscribe((settings) => {
       this.element.classList.toggle('left-handed', settings.leftHanded);
+      this.element.classList.toggle('menu-bar', settings.menuBar);
+      this.menuHead.hidden = !settings.menuBar;
+      this.menuButton.hidden = settings.menuBar;
+      if (!settings.menuBar) this.menuBar.close();
       this.placeCards(settings.largeCards);
       this.render();
       this.measure();
@@ -345,8 +373,7 @@ export class UiRoot {
     const state = this.app.match.current;
     const online = state.setup.mode === 'online' && (this.online?.active ?? false);
     const choice = await pauseMenu({
-      canConcede:
-        state.setup.mode === 'local' && state.winner === null && state.rack.phase !== 'over',
+      canConcede: this.canConcede(),
       ...(online ? { online: { canResign: state.winner === null } } : {}),
     });
     switch (choice) {
@@ -364,9 +391,7 @@ export class UiRoot {
         await rulesDialog();
         break;
       case 'concede':
-        this.app.match.concede(state.rack.turn);
-        this.app.showBalls();
-        await this.afterRack();
+        await this.concede();
         break;
       case 'menu':
         await this.menu();
@@ -380,6 +405,20 @@ export class UiRoot {
       default:
         break;
     }
+  }
+
+  /** Whether the player at the table may concede the rack (in a match on this device). */
+  private canConcede(): boolean {
+    const state = this.app.match.current;
+    return state.setup.mode === 'local' && state.winner === null && state.rack.phase !== 'over';
+  }
+
+  /** The player at the table concedes the rack. */
+  private async concede(): Promise<void> {
+    if (!this.canConcede()) return;
+    this.app.match.concede(this.app.match.current.rack.turn);
+    this.app.showBalls();
+    await this.afterRack();
   }
 
   /** Shoots the shot lined up, if everything it needs is set. */
@@ -502,10 +541,160 @@ export class UiRoot {
     else void document.documentElement.requestFullscreen?.().catch(() => undefined);
   }
 
+  /** The menu bar: what the main and pause menus offer, and the settings used most, at a click. */
+  private menus(): Menu[] {
+    const app = this.app;
+    const settings = app.settings;
+    const sep: MenuItem = { separator: true };
+    const toggle = (
+      label: string,
+      key: 'keepZoom' | 'largeCards' | 'leftHanded' | 'sound',
+      shortcut?: string,
+    ): MenuItem => ({
+      label,
+      ...(shortcut ? { shortcut } : {}),
+      checked: () => settings.get()[key],
+      action: () => settings.update({ [key]: !settings.get()[key] }),
+    });
+    const choose = <K extends 'guide' | 'speed' | 'cloth' | 'quality'>(
+      key: K,
+      options: readonly (readonly [Settings[K], string])[],
+    ): MenuItem[] =>
+      options.map(([value, label]) => ({
+        label,
+        checked: () => settings.get()[key] === value,
+        action: () => settings.update({ [key]: value }),
+      }));
+    const online = () => this.online;
+    return [
+      {
+        label: '&Game',
+        items: () => {
+          const state = app.match.current;
+          const items: MenuItem[] = [
+            { label: '&Practice', action: () => void this.startPractice() },
+            { label: '&Two players…', action: () => void this.startLocal() },
+            {
+              label: 'Play a friend &online…',
+              enabled: () => online() !== null,
+              action: () => void online()?.host(),
+            },
+            {
+              label: '&Join a game…',
+              enabled: () => online() !== null,
+              action: () => void online()?.join(),
+            },
+          ];
+          if (state.setup.mode === 'online' && online()?.active) {
+            items.push(sep);
+            if (state.winner === null) {
+              items.push({ label: '&Resign the match', action: () => void online()?.resign() });
+            }
+            items.push({ label: '&Leave the online game', action: () => void online()?.leave() });
+          } else if (state.setup.mode === 'local') {
+            items.push(sep, {
+              label: '&Concede the rack',
+              enabled: () => this.canConcede(),
+              action: () => void this.concede(),
+            });
+          }
+          return items;
+        },
+      },
+      {
+        label: '&View',
+        items: () => [
+          {
+            label: '&Top view',
+            shortcut: 'T',
+            checked: () => app.rig.view === 'top',
+            action: () => this.run({ kind: 'toggleView' }),
+          },
+          { label: '&Reset the view', shortcut: 'Home', action: () => this.run({ kind: 'home' }) },
+          {
+            label: 'Look from the &other end',
+            shortcut: 'F',
+            action: () => this.run({ kind: 'flip' }),
+          },
+          {
+            label: '&Full screen',
+            checked: () => document.fullscreenElement !== null,
+            action: () => this.toggleFullscreen(),
+          },
+          sep,
+          {
+            label: '&Aiming guide',
+            shortcut: 'G',
+            submenu: () =>
+              choose('guide', [
+                ['long', 'Long'],
+                ['short', 'Short'],
+                ['off', 'Off'],
+              ]),
+          },
+          toggle('&Keep the zoom while turning', 'keepZoom'),
+          sep,
+          toggle('Large player &cards', 'largeCards'),
+          toggle('Controls on the &left', 'leftHanded'),
+        ],
+      },
+      {
+        label: '&Options',
+        items: () => [
+          toggle('&Sound', 'sound', 'M'),
+          {
+            label: 'Shot &playback',
+            submenu: () =>
+              choose(
+                'speed',
+                SPEEDS.map((x) => [x, `${x}×`] as const),
+              ),
+          },
+          {
+            label: '&Cloth',
+            submenu: () =>
+              choose(
+                'cloth',
+                (Object.keys(CLOTH_NAMES) as (keyof typeof CLOTH_NAMES)[]).map(
+                  (c) => [c, CLOTH_NAMES[c]] as const,
+                ),
+              ),
+          },
+          {
+            label: '&Graphics, after a reload',
+            submenu: () =>
+              choose('quality', [
+                ['auto', 'Auto'],
+                ['high', 'High'],
+                ['low', 'Low'],
+              ]),
+          },
+          sep,
+          { label: 'All &settings…', action: () => void settingsDialog(settings) },
+        ],
+      },
+      {
+        label: '&Help',
+        items: () => [
+          { label: '&Keyboard and mouse', shortcut: '?', action: () => void controlsDialog() },
+          { label: '&Rules of 8-ball', action: () => void rulesDialog() },
+        ],
+      },
+    ];
+  }
+
   private onKey(event: KeyboardEvent): void {
     if (dialogOpen()) return;
+    // An open menu takes the keys (its own handle them where it has the focus); Escape shuts it.
+    if (this.menuBar.isOpen) {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        this.menuBar.close();
+      }
+      return;
+    }
     const target = event.target as HTMLElement | null;
-    if (target?.closest('input, textarea, select')) return;
+    if (target?.closest('input, textarea, select, [role="menubar"]')) return;
     const command = commandFor(event);
     if (!command) return;
     // Space and Enter on a focused button press that button.
@@ -732,14 +921,16 @@ export class UiRoot {
   }
 
   /**
-   * Tells the camera how much of each edge the interface covers, and the notes where the top's
-   * parts end. Large cards cover the side away from the power bar, or the top on a phone held
-   * upright.
+   * Tells the camera how much of each edge the interface covers, the large cards where the top
+   * bar ends (they start under it on a phone held upright, or with the menu bar), and the notes
+   * where the top's parts end. Large cards cover the side away from the power bar, or the top on
+   * a phone held upright.
    */
   private measure(): void {
     const w = window.innerWidth;
     const h = window.innerHeight;
     const top = this.top.getBoundingClientRect();
+    this.element.style.setProperty('--bar-bottom', `${Math.round(top.bottom)}px`);
     const dock = this.dock.getBoundingClientRect();
     const power = this.power.element.getBoundingClientRect();
     const left = this.app.settings.get().leftHanded;

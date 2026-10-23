@@ -597,11 +597,41 @@
   }
 
   /*
+   * The menu bar, when chosen: the game's name and the menus at the start of the top bar, in place
+   * of the menu button at its end. The name shows where the bar has the room, with large cards.
+   */
+  .hud-menus {
+    flex: none;
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    min-width: 0;
+  }
+
+  .hud-menus[hidden],
+  .hud-buttons .m-icon-btn[hidden] {
+    display: none;
+  }
+
+  .pool-ui:not(.large-cards) .m-brand {
+    display: none;
+  }
+
+  /* Without the menu button, the full screen button ends the bar: its tip keeps on the screen. */
+  .pool-ui.menu-bar .m-topbar-end > [data-tip]:nth-last-child(2):hover::after,
+  .pool-ui.menu-bar .m-topbar-end > [data-tip]:nth-last-child(2):focus-visible::after {
+    left: auto;
+    right: 0;
+    transform: none;
+  }
+
+  /*
    * Large cards, for video calls. They stand on their own on the side away from the power bar, a
    * camera's picture across the top of each like a call's; the top bar keeps the race and the
-   * buttons, in the corner over the power bar, and the dock and the notes centre in the space
-   * left. On a phone held upright they stand side by side under the buttons instead (the query is
-   * kept in step with PHONE_UPRIGHT in UiRoot.ts).
+   * buttons, in the corner over the power bar (or, with the menu bar, runs the whole width over
+   * the cards), and the dock and the notes centre in the space left. On a phone held upright they
+   * stand side by side under the top bar instead (the query is kept in step with PHONE_UPRIGHT in
+   * UiRoot.ts, which also sets --bar-bottom, where the top bar ends).
    */
   .pool-ui {
     --edge-top: max(0.8rem, env(safe-area-inset-top));
@@ -609,6 +639,8 @@
     --edge-left: max(0.8rem, env(safe-area-inset-left));
     --edge-right: max(0.8rem, env(safe-area-inset-right));
     --side: clamp(24rem, 24vw, 30rem);
+    /* Where the cards start. */
+    --players-top: var(--edge-top);
     /* A large card's height without its picture, so that two pictures fit the screen's height. */
     --card-info: 10.8rem;
   }
@@ -625,9 +657,23 @@
     right: auto;
   }
 
+  .pool-ui.large-cards.menu-bar {
+    --players-top: calc(var(--bar-bottom, 6rem) + 0.8rem);
+  }
+
+  .pool-ui.large-cards.menu-bar .hud-top,
+  .pool-ui.large-cards.menu-bar.left-handed .hud-top {
+    left: var(--edge-left);
+    right: var(--edge-right);
+  }
+
+  .pool-ui.large-cards.menu-bar .race {
+    margin-left: auto;
+  }
+
   .hud-players {
     position: fixed;
-    top: var(--edge-top);
+    top: var(--players-top);
     left: var(--edge-left);
     width: var(--side);
     display: flex;
@@ -769,8 +815,12 @@
     width: 100%;
     height: auto;
     aspect-ratio: 4 / 3;
-    max-height: calc((100vh - 2.6rem) / 2 - var(--card-info) - 0.7rem);
-    max-height: calc((100dvh - 2.6rem) / 2 - var(--card-info) - 0.7rem);
+    max-height: calc(
+      (100vh - var(--players-top) - var(--edge-bottom) - 1rem) / 2 - var(--card-info) - 0.7rem
+    );
+    max-height: calc(
+      (100dvh - var(--players-top) - var(--edge-bottom) - 1rem) / 2 - var(--card-info) - 0.7rem
+    );
     border-radius: 1.1rem;
   }
 
@@ -791,11 +841,15 @@
     }
   }
 
-  /* Phones held upright: the two cards side by side under the buttons, the race beside them. */
+  /* Phones held upright: the two cards side by side under the top bar, the race in it (unless
+   * the menus take its room). */
   @media (max-width: 640px) and (orientation: portrait) {
+    .pool-ui {
+      --players-top: calc(var(--bar-bottom, 5rem) + 0.6rem);
+    }
+
     .hud-players,
     .pool-ui.left-handed .hud-players {
-      top: calc(var(--edge-top) + 4.8rem);
       left: var(--edge-left);
       right: var(--edge-right);
       width: auto;
@@ -806,6 +860,10 @@
 
     .pool-ui.large-cards .race {
       display: block;
+    }
+
+    .pool-ui.large-cards.menu-bar .race {
+      display: none;
     }
 
     .pool-ui.large-cards .hud-dock,
@@ -868,6 +926,21 @@
 
     .player-card.large .m-avatar-video {
       max-height: 24vh;
+    }
+  }
+
+  /* A phone with the menu bar: tighter menus, and with small cards a row of their own over them. */
+  @media (max-width: 640px) {
+    .menubar-item {
+      padding: 0 0.8rem;
+    }
+
+    .pool-ui.menu-bar:not(.large-cards) .hud-top {
+      flex-wrap: wrap;
+    }
+
+    .pool-ui.menu-bar:not(.large-cards) .hud-menus {
+      flex: 1 0 100%;
     }
   }
 

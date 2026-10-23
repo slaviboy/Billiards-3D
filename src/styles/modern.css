@@ -13,8 +13,9 @@
  * The modern interface, shared with the author's chess game: floating graphite glass over the
  * table, hairline borders, a champagne-gold accent and the system's own sans-serif. Sizes are in
  * rem and follow the window, within limits that keep text readable on phones and calm on large
- * screens. This file holds the design tokens and the common parts (buttons, tooltips, switches,
- * segmented controls, dialogs and their fields); the game's own layout is in pool.css.
+ * screens. This file holds the design tokens and the common parts (buttons, tooltips, the menu
+ * bar and its menus, switches, segmented controls, dialogs and their fields); the game's own
+ * layout is in pool.css.
  */
 :root[data-ui='modern'] {
   font-size: clamp(9px, calc(10px * var(--ui-scale)), 14px);
@@ -207,6 +208,165 @@
     left: auto;
     right: 0;
     transform: none;
+  }
+
+  /* The game's name at the start of the menu bar. */
+  .m-brand {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    height: 3rem;
+    padding: 0 1.2rem 0 0.4rem;
+    border-right: 1px solid var(--m-line);
+    flex: none;
+  }
+
+  .m-brand-mark svg {
+    width: 2.8rem;
+    height: 2.8rem;
+  }
+
+  .m-brand-name {
+    font: 600 1.95rem/1 var(--m-serif);
+    letter-spacing: 0.01em;
+    white-space: nowrap;
+  }
+
+  /* The menu bar, as in the chess game. */
+  .menubar {
+    display: flex;
+    gap: 0.2rem;
+    min-width: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .menubar-item {
+    flex: none;
+    height: 3.4rem;
+    padding: 0 1.2rem;
+    border: 0;
+    border-radius: 1.1rem;
+    background: none;
+    color: var(--m-muted);
+    font: 500 1.38rem var(--m-font);
+    cursor: pointer;
+    transition:
+      background 0.15s,
+      color 0.15s;
+  }
+
+  .menubar-item u {
+    text-decoration: none;
+  }
+
+  .menubar-item:focus-visible {
+    background: var(--m-hover);
+    color: var(--m-text);
+  }
+
+  /* Only where there is a real hover: a touch screen keeps :hover on the last item tapped, which
+     would leave a closed menu lit beside the open one. */
+  @media (hover: hover) {
+    .menubar-item:hover {
+      background: var(--m-hover);
+      color: var(--m-text);
+    }
+  }
+
+  .menubar-item.open {
+    background: var(--m-press);
+    color: var(--m-text);
+  }
+
+  /* Dropdown menus. MenuBar places them at the button's lower left corner. */
+  .menu {
+    position: fixed;
+    z-index: 40;
+    min-width: 25rem;
+    margin-top: 0.8rem;
+    padding: 0.6rem;
+    border-color: var(--m-line-strong);
+    border-radius: 1.4rem;
+    background: var(--m-surface-strong);
+    box-shadow: var(--m-shadow-lg);
+    color: var(--m-text);
+    font: 400 1.32rem var(--m-font);
+    user-select: none;
+    animation: m-menu-in 0.14s ease-out;
+  }
+
+  .menu.submenu {
+    min-width: 16rem;
+    margin: -0.3rem 0 0 0.8rem;
+  }
+
+  .menu-entry {
+    display: grid;
+    grid-template-columns: 2rem 1fr auto;
+    align-items: center;
+    gap: 0.8rem;
+    min-height: 3.2rem;
+    padding: 0 0.8rem 0 0.7rem;
+    border-radius: 0.9rem;
+    cursor: pointer;
+    outline: none;
+  }
+
+  .menu-entry u {
+    text-decoration: none;
+  }
+
+  .menu-entry:hover,
+  .menu-entry:focus {
+    background: var(--m-hover);
+  }
+
+  .menu-entry[aria-disabled='true'] {
+    color: var(--m-faint);
+    cursor: default;
+  }
+
+  .menu-entry[aria-disabled='true']:hover {
+    background: none;
+  }
+
+  .menu-check {
+    display: grid;
+    place-items: center;
+    color: var(--m-gold);
+  }
+
+  .menu-check svg {
+    width: 1.6rem;
+    height: 1.6rem;
+  }
+
+  .menu-shortcut {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: var(--m-faint);
+  }
+
+  .menu-shortcut svg {
+    width: 1.5rem;
+    height: 1.5rem;
+  }
+
+  .menu-shortcut kbd {
+    padding: 0.1rem 0.6rem;
+    border: 1px solid var(--m-line);
+    border-radius: 0.6rem;
+    background: var(--m-raised);
+    color: var(--m-muted);
+    font: 500 1.1rem var(--m-font);
+  }
+
+  .menu-separator {
+    height: 1px;
+    margin: 0.5rem 0.8rem;
+    background: var(--m-line);
   }
 
   .m-switch-row {

@@ -11,8 +11,9 @@
 
 // The player's preferences, kept in this browser. Whatever is stored is checked field by field
 // against the defaults, so a damaged or older entry never breaks the game; storage that is blocked
-// simply means the defaults. A tablet or a computer starts with large cards, a phone with small
-// ones in the top bar, which leave its small screen to the table.
+// simply means the defaults. A tablet or a computer starts with large cards and the menu bar, a
+// phone with small cards in the top bar and the menu behind its button, which leave its small
+// screen to the table.
 
 import { CLOTHS, type ClothName } from '../scene/surfaces.ts';
 import type { ViewMode } from '../scene/CameraRig.ts';
@@ -40,6 +41,8 @@ export interface Settings {
    * buttons on a phone held upright. Otherwise they are small, in the top bar.
    */
   readonly largeCards: boolean;
+  /** The menus along the top bar, as in a desktop program, instead of behind the menu button. */
+  readonly menuBar: boolean;
   /** The player's name (for two players on one device, the second name too). */
   readonly name: string;
   readonly name2: string;
@@ -59,6 +62,7 @@ export const DEFAULT_SETTINGS: Settings = {
   leftHanded: false,
   keepZoom: true,
   largeCards: true,
+  menuBar: true,
   name: 'Player 1',
   name2: 'Player 2',
   table: '9ft',
@@ -66,7 +70,7 @@ export const DEFAULT_SETTINGS: Settings = {
   shotClock: 0,
 };
 
-export const PHONE_SETTINGS: Settings = { ...DEFAULT_SETTINGS, largeCards: false };
+export const PHONE_SETTINGS: Settings = { ...DEFAULT_SETTINGS, largeCards: false, menuBar: false };
 
 /** The defaults for this device: a phone's screen is under 600 CSS pixels on its shorter side
  * (most are 360 to 430), a tablet's or a computer's larger. */
@@ -101,6 +105,7 @@ export function sanitize(value: unknown, d: Settings = DEFAULT_SETTINGS): Settin
     leftHanded: typeof v.leftHanded === 'boolean' ? v.leftHanded : d.leftHanded,
     keepZoom: typeof v.keepZoom === 'boolean' ? v.keepZoom : d.keepZoom,
     largeCards: typeof v.largeCards === 'boolean' ? v.largeCards : d.largeCards,
+    menuBar: typeof v.menuBar === 'boolean' ? v.menuBar : d.menuBar,
     name: name(v.name, d.name),
     name2: name(v.name2, d.name2),
     table: isTableSize(v.table) ? v.table : d.table,

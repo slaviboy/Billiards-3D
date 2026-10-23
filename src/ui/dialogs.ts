@@ -29,6 +29,13 @@ import { el, openDialog } from './Dialog.ts';
 import { EIGHT_BALL, LINE_ICONS } from './icons.ts';
 import { segmented, switchRow } from './modern/controls.ts';
 
+/** The cloths by the names the player sees, in Settings and the menu bar. */
+export const CLOTH_NAMES: Record<ClothName, string> = {
+  blueGreen: 'Tournament',
+  yellowGreen: 'Green',
+  electricBlue: 'Blue',
+};
+
 function button(text: string, onClick: () => void, className = 'btn'): HTMLButtonElement {
   const b = el('button', className, text);
   b.type = 'button';
@@ -207,10 +214,7 @@ export function settingsDialog(store: Store<Settings>): Promise<void> {
     );
     const cloth = segmented<ClothName>(
       'Cloth',
-      (Object.keys(CLOTHS) as ClothName[]).map(
-        (c) =>
-          [c, { blueGreen: 'Tournament', yellowGreen: 'Green', electricBlue: 'Blue' }[c]] as const,
-      ),
+      (Object.keys(CLOTHS) as ClothName[]).map((c) => [c, CLOTH_NAMES[c]] as const),
       s.cloth,
       (v) => set({ cloth: v }),
     );
@@ -236,6 +240,9 @@ export function settingsDialog(store: Store<Settings>): Promise<void> {
     const [large] = switchRow('Large player cards, for video calls', s.largeCards, (on) =>
       set({ largeCards: on }),
     );
+    const [menuBar] = switchRow('Menu bar, instead of the menu button', s.menuBar, (on) =>
+      set({ menuBar: on }),
+    );
     const [keepZoom] = switchRow('Keep the zoom while turning the view', s.keepZoom, (on) =>
       set({ keepZoom: on }),
     );
@@ -253,8 +260,9 @@ export function settingsDialog(store: Store<Settings>): Promise<void> {
       group('Sound', sound, field('Volume', volume)),
       group(
         'Screen',
-        left,
+        menuBar,
         large,
+        left,
         field('Graphics (takes effect when the page reloads)', quality.element),
       ),
       group('You', field('Name', name)),

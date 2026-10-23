@@ -101,17 +101,19 @@ async function problems(page: Page): Promise<string[]> {
   });
 }
 
-for (const [name, width, height, touch, upright] of [
-  ['a computer', 1174, 880, false, false],
-  ['a tablet held upright', 820, 1180, true, false],
-  ['a phone held upright', 390, 844, true, true],
-  ['a phone on its side', 844, 390, true, false],
+// A tablet and a computer have the menu bar over the cards by default; a phone has it if chosen.
+for (const [name, width, height, touch, upright, settings] of [
+  ['a computer', 1174, 880, false, false, LARGE],
+  ['a tablet held upright', 820, 1180, true, false, LARGE],
+  ['a phone held upright', 390, 844, true, true, LARGE],
+  ['a phone held upright, with the menu bar', 390, 844, true, true, { ...LARGE, menuBar: true }],
+  ['a phone on its side', 844, 390, true, false, LARGE],
 ] as const) {
   test.describe(`large cards on ${name}`, () => {
     test.use({ viewport: { width, height }, hasTouch: touch, isMobile: touch });
 
     test('fit with pictures, and leave the table in sight', async ({ page }) => {
-      await startMatch(page);
+      await startMatch(page, settings);
       await showPictures(page);
       await settle(page);
       expect(await problems(page)).toEqual([]);
@@ -136,7 +138,7 @@ for (const [name, width, height, touch, upright] of [
 }
 
 test('the switch in Settings moves the cards, the picture playing with them', async ({ page }) => {
-  await startMatch(page, { largeCards: false });
+  await startMatch(page, { largeCards: false, menuBar: false });
   await showPictures(page);
   const card = page.getByTestId('player-0');
   const video = card.locator('video');

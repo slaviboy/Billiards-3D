@@ -11,7 +11,7 @@
 
 // The settings: a new player keeps the zoom while the view turns, and settings saved before that
 // was the default move over once with the zoom kept and everything else as it was. A tablet or a
-// computer starts with large player cards, a phone with small ones.
+// computer starts with large player cards and the menu bar, a phone with neither.
 
 import { describe, expect, it, vi } from 'vitest';
 import {
@@ -75,18 +75,22 @@ describe('the settings', () => {
     }
   });
 
-  it('start large cards on a tablet or a computer, small ones on a phone', () => {
-    expect(loadSettings(storage(), DEFAULT_SETTINGS).largeCards).toBe(true);
-    expect(loadSettings(storage(), PHONE_SETTINGS).largeCards).toBe(false);
-    // Settings saved before the cards could be large take the device's choice, the rest as saved.
+  it('start large cards and the menu bar on a tablet or a computer, not on a phone', () => {
+    const big = { largeCards: true, menuBar: true };
+    const small = { largeCards: false, menuBar: false };
+    expect(loadSettings(storage(), DEFAULT_SETTINGS)).toMatchObject(big);
+    expect(loadSettings(storage(), PHONE_SETTINGS)).toMatchObject(small);
+    // Settings saved before these were chosen take the device's choice, the rest as saved.
     const before = storage({ 'pool.settings.v2': JSON.stringify({ name: 'Ada' }) });
-    expect(loadSettings(before, DEFAULT_SETTINGS)).toMatchObject({ name: 'Ada', largeCards: true });
-    expect(loadSettings(before, PHONE_SETTINGS)).toMatchObject({ name: 'Ada', largeCards: false });
+    expect(loadSettings(before, DEFAULT_SETTINGS)).toMatchObject({ name: 'Ada', ...big });
+    expect(loadSettings(before, PHONE_SETTINGS)).toMatchObject({ name: 'Ada', ...small });
     // A choice made stays, and a damaged one is the device's.
     const saved = storage();
-    saveSettings({ ...DEFAULT_SETTINGS, largeCards: false }, saved);
-    expect(loadSettings(saved, DEFAULT_SETTINGS).largeCards).toBe(false);
-    const damaged = storage({ 'pool.settings.v2': JSON.stringify({ largeCards: 'yes' }) });
-    expect(loadSettings(damaged, PHONE_SETTINGS).largeCards).toBe(false);
+    saveSettings({ ...DEFAULT_SETTINGS, largeCards: false, menuBar: false }, saved);
+    expect(loadSettings(saved, DEFAULT_SETTINGS)).toMatchObject(small);
+    const damaged = storage({
+      'pool.settings.v2': JSON.stringify({ largeCards: 'yes', menuBar: 1 }),
+    });
+    expect(loadSettings(damaged, PHONE_SETTINGS)).toMatchObject(small);
   });
 });

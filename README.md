@@ -43,7 +43,10 @@ table, seen in 3D or straight from above.
 ## Playing
 
 Choose **Practice** to play alone with no rules, **Two players** for a match on one device, **Play
-a friend online** to invite someone, or **Join a game** to open a link you were sent.
+a friend online** to invite someone, or **Join a game** to open a link you were sent. On a tablet
+or a computer the menu bar along the top (Game, View, Options, Help) holds all of these, the view
+and the settings; on a phone they are behind the menu button, or Settings can show the bar there
+too. Escape opens the pause menu everywhere.
 
 - **Aim** by dragging on the cloth (with a finger, sweep round the cue ball), or with Shift and the
   arrow keys; `,` and `.` aim finely.

@@ -324,5 +324,10 @@
       left: auto;
       right: var(--edge-right);
     }
+
+    /* The menu bar fills that space: under the cards, then. */
+    .pool-ui.large-cards.menu-bar .online-chip {
+      top: calc(var(--hud-top, 7.4rem) + 0.6rem);
+    }
   }
 }
