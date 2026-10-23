@@ -15,8 +15,10 @@
 //              shoot. Each shot starts from no power, the bar showing which way to pull; back at
 //              its start, letting go takes nothing, so a pull can be stopped to aim again.
 //   SpinPad    the cue ball's face, with the cue tip's point on it: drag the point for top, draw
-//              and side; a double click centres it. The cue's elevation sits beside it.
-//   FineAim    a ridged wheel: drag it sideways to turn the aim by small steps.
+//              and side; a double click or its button centres it. The spin reads beside it.
+//   ElevationSlider  the cue's elevation, a groove dragged along or stepped with the keys.
+//   FineAim    a ridged wheel: drag it sideways to turn the aim by small steps; stepButton, a
+//              button that steps once, then again while held, sits on either side of it.
 
 import { el } from '../Dialog.ts';
 import { LINE_ICONS } from '../icons.ts';
@@ -193,19 +195,33 @@ export class PowerBar {
 export interface SpinHandlers {
   tip(): { a: number; b: number };
   setTip(a: number, b: number): void;
-  elevation(): number;
-  setElevation(degrees: number): void;
   enabled(): boolean;
+}
+
+const EIGHTHS = ['', '⅛', '¼', '⅜', '½'] as const;
+
+/**
+ * The spin in words, in eighths of the ball's radius from its centre: top or draw ("Stun" at the
+ * centre's height), and side ("No side" at the centre's).
+ */
+export function spinWords(a: number, b: number): [string, string] {
+  const amount = (x: number) => EIGHTHS[Math.min(4, Math.round(Math.abs(x) * 8))]!;
+  const height = amount(b);
+  const side = amount(a);
+  return [
+    height ? `${b > 0 ? 'Top' : 'Draw'} ${height}` : 'Stun',
+    side ? `${a > 0 ? 'Left' : 'Right'} ${side}` : 'No side',
+  ];
 }
 
 export class SpinPad {
   readonly element: HTMLElement;
   private readonly ball: HTMLElement;
   private readonly dot: HTMLElement;
-  private readonly elevation: HTMLElement;
-  private readonly elevationValue: HTMLElement;
+  private readonly height: HTMLElement;
+  private readonly side: HTMLElement;
+  private readonly centre: HTMLButtonElement;
   private dragging = -1;
-  private raising = -1;
 
   constructor(private readonly handlers: SpinHandlers) {
     this.element = el('div', 'spin');
@@ -213,25 +229,26 @@ export class SpinPad {
     this.ball = el('div', 'spin-ball');
     this.ball.setAttribute('role', 'group');
     this.ball.setAttribute('aria-label', 'Where the cue strikes the cue ball: drag for spin');
-    this.ball.dataset.tip = 'Spin: drag the point (I J K L; C centres)';
+    this.ball.dataset.tip = 'Spin: drag the point (I J K L)';
     const limit = el('div', 'spin-limit');
     this.dot = el('div', 'spin-dot');
     this.ball.append(limit, this.dot);
-    // The cue's elevation: a groove as wide as a finger, dragged anywhere along it (up raises the
-    // cue), or stepped with the arrow keys.
-    const side = el('div', 'spin-elevation');
-    side.dataset.tip = 'Cue elevation';
-    this.elevation = el('div', 'elevation-track');
-    this.elevation.tabIndex = 0;
-    this.elevation.setAttribute('role', 'slider');
-    this.elevation.setAttribute('aria-label', 'Cue elevation in degrees');
-    this.elevation.setAttribute('aria-orientation', 'vertical');
-    this.elevation.setAttribute('aria-valuemin', '0');
-    this.elevation.setAttribute('aria-valuemax', String(MAX_ELEVATION));
-    this.elevation.append(el('div', 'elevation-fill'), el('div', 'elevation-grip'));
-    this.elevationValue = el('span', 'spin-elevation-value');
-    side.append(this.elevation, this.elevationValue);
-    this.element.append(this.ball, side);
+    // The spin in words, and a button to strike the centre again.
+    const readout = el('div', 'spin-readout');
+    readout.setAttribute('aria-live', 'polite');
+    this.height = el('span', 'spin-height');
+    this.side = el('span', 'spin-side');
+    this.centre = el('button', 'm-icon-btn spin-centre');
+    this.centre.type = 'button';
+    this.centre.innerHTML = LINE_ICONS.restart;
+    this.centre.setAttribute('aria-label', 'Strike the centre (C)');
+    this.centre.dataset.tip = 'Strike the centre (C)';
+    this.centre.addEventListener('click', () => {
+      if (this.handlers.enabled()) this.handlers.setTip(0, 0);
+      this.render();
+    });
+    readout.append(this.height, this.side, this.centre);
+    this.element.append(this.ball, readout);
 
     this.ball.addEventListener('pointerdown', (event) => {
       if (!this.handlers.enabled()) return;
@@ -252,22 +269,83 @@ export class SpinPad {
       if (this.handlers.enabled()) this.handlers.setTip(0, 0);
       this.render();
     });
-    this.elevation.addEventListener('pointerdown', (event) => {
+  }
+
+  private moveTo(clientX: number, clientY: number): void {
+    const rect = this.ball.getBoundingClientRect();
+    const r = rect.width / 2;
+    // The point on the ball's face as the shooter sees it: a to the shooter's left, b up.
+    let a = -(clientX - (rect.left + r)) / r;
+    let b = -(clientY - (rect.top + r)) / r;
+    const length = Math.hypot(a, b);
+    if (length > MAX_TIP) {
+      a *= MAX_TIP / length;
+      b *= MAX_TIP / length;
+    }
+    this.handlers.setTip(a, b);
+    this.render();
+  }
+
+  render(): void {
+    const { a, b } = this.handlers.tip();
+    // Offsets as a share of the ball's radius, from the centre.
+    this.dot.style.left = `${50 - a * 50}%`;
+    this.dot.style.top = `${50 - b * 50}%`;
+    const [height, side] = spinWords(a, b);
+    this.height.textContent = height;
+    this.side.textContent = side;
+    const enabled = this.handlers.enabled();
+    this.element.classList.toggle('disabled', !enabled);
+    this.centre.disabled = !enabled || (a === 0 && b === 0);
+  }
+}
+
+export interface ElevationHandlers {
+  elevation(): number;
+  setElevation(degrees: number): void;
+  enabled(): boolean;
+}
+
+/**
+ * The cue's elevation: a groove as wide as a finger, dragged anywhere along it (up raises the
+ * cue), or stepped with the arrow keys, Page Up and Down, Home and End.
+ */
+export class ElevationSlider {
+  readonly element: HTMLElement;
+  private readonly track: HTMLElement;
+  private readonly value: HTMLElement;
+  private raising = -1;
+
+  constructor(private readonly handlers: ElevationHandlers) {
+    this.element = el('div', 'spin-elevation');
+    this.element.dataset.tip = 'Cue elevation';
+    this.track = el('div', 'elevation-track');
+    this.track.tabIndex = 0;
+    this.track.setAttribute('role', 'slider');
+    this.track.setAttribute('aria-label', 'Cue elevation in degrees');
+    this.track.setAttribute('aria-orientation', 'vertical');
+    this.track.setAttribute('aria-valuemin', '0');
+    this.track.setAttribute('aria-valuemax', String(MAX_ELEVATION));
+    this.track.append(el('div', 'elevation-fill'), el('div', 'elevation-grip'));
+    this.value = el('span', 'spin-elevation-value');
+    this.element.append(this.track, this.value);
+
+    this.track.addEventListener('pointerdown', (event) => {
       if (!this.handlers.enabled()) return;
       event.preventDefault();
       this.raising = event.pointerId;
-      capture(this.elevation, event.pointerId);
+      capture(this.track, event.pointerId);
       this.raiseTo(event.clientY);
     });
-    this.elevation.addEventListener('pointermove', (event) => {
+    this.track.addEventListener('pointermove', (event) => {
       if (event.pointerId === this.raising) this.raiseTo(event.clientY);
     });
     const lower = (event: PointerEvent) => {
       if (event.pointerId === this.raising) this.raising = -1;
     };
-    this.elevation.addEventListener('pointerup', lower);
-    this.elevation.addEventListener('pointercancel', lower);
-    this.elevation.addEventListener('keydown', (event) => {
+    this.track.addEventListener('pointerup', lower);
+    this.track.addEventListener('pointercancel', lower);
+    this.track.addEventListener('keydown', (event) => {
       if (!this.handlers.enabled()) return;
       const degrees = Math.round(this.handlers.elevation());
       const next =
@@ -294,40 +372,63 @@ export class SpinPad {
   }
 
   private raiseTo(clientY: number): void {
-    const rect = this.elevation.getBoundingClientRect();
+    const rect = this.track.getBoundingClientRect();
     const share = 1 - (clientY - rect.top) / Math.max(1, rect.height);
     this.handlers.setElevation(Math.round(Math.max(0, Math.min(1, share)) * MAX_ELEVATION));
     this.render();
   }
 
-  private moveTo(clientX: number, clientY: number): void {
-    const rect = this.ball.getBoundingClientRect();
-    const r = rect.width / 2;
-    // The point on the ball's face as the shooter sees it: a to the shooter's left, b up.
-    let a = -(clientX - (rect.left + r)) / r;
-    let b = -(clientY - (rect.top + r)) / r;
-    const length = Math.hypot(a, b);
-    if (length > MAX_TIP) {
-      a *= MAX_TIP / length;
-      b *= MAX_TIP / length;
-    }
-    this.handlers.setTip(a, b);
-    this.render();
-  }
-
   render(): void {
-    const { a, b } = this.handlers.tip();
-    // Offsets as a share of the ball's radius, from the centre.
-    this.dot.style.left = `${50 - a * 50}%`;
-    this.dot.style.top = `${50 - b * 50}%`;
     const degrees = Math.round(this.handlers.elevation());
-    this.elevation.style.setProperty('--elevation', String(degrees / MAX_ELEVATION));
-    this.elevation.setAttribute('aria-valuenow', String(degrees));
-    this.elevationValue.textContent = `${degrees}°`;
+    this.track.style.setProperty('--elevation', String(degrees / MAX_ELEVATION));
+    this.track.setAttribute('aria-valuenow', String(degrees));
+    this.value.textContent = `${degrees}°`;
     const enabled = this.handlers.enabled();
     this.element.classList.toggle('disabled', !enabled);
-    this.elevation.setAttribute('aria-disabled', String(!enabled));
+    this.track.setAttribute('aria-disabled', String(!enabled));
   }
+}
+
+/** Delay before a held step button repeats, and the time between its repeats, in ms. */
+const HOLD_DELAY = 380;
+const HOLD_EVERY = 60;
+
+/** A button that takes its step once when pressed, then again and again while it is held. */
+export function stepButton(
+  icon: string,
+  label: string,
+  step: () => void,
+  enabled: () => boolean,
+): HTMLButtonElement {
+  const button = el('button', 'm-icon-btn step-btn');
+  button.type = 'button';
+  button.innerHTML = icon;
+  button.setAttribute('aria-label', label);
+  button.dataset.tip = label;
+  let timer = 0;
+  const stop = () => {
+    window.clearTimeout(timer);
+    window.clearInterval(timer);
+    timer = 0;
+  };
+  button.addEventListener('pointerdown', (event) => {
+    if (!enabled()) return;
+    event.preventDefault();
+    capture(button, event.pointerId);
+    step();
+    stop();
+    timer = window.setTimeout(() => {
+      timer = window.setInterval(step, HOLD_EVERY);
+    }, HOLD_DELAY);
+  });
+  button.addEventListener('pointerup', stop);
+  button.addEventListener('pointercancel', stop);
+  button.addEventListener('lostpointercapture', stop);
+  // From the keyboard (Enter or Space on the button), one step a press.
+  button.addEventListener('click', (event) => {
+    if (event.detail === 0 && enabled()) step();
+  });
+  return button;
 }
 
 /** Radians of aim per pixel the wheel is dragged. */

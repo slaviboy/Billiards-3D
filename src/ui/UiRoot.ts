@@ -19,7 +19,7 @@
 import type { App } from '../app/App.ts';
 import { SPEEDS, type Settings } from '../app/Settings.ts';
 import type { MatchSetup, MatchState, ShotResult } from '../game/MatchController.ts';
-import { commandFor, type Command } from '../input/shortcuts.ts';
+import { commandFor, FINE_AIM_STEP, type Command } from '../input/shortcuts.ts';
 import { other } from '../rules/eightBall.ts';
 import { CHOICES, type Foul, type Seat } from '../rules/types.ts';
 import { dialogOpen, el } from './Dialog.ts';
@@ -40,7 +40,15 @@ import { iconButton } from './modern/controls.ts';
 import { MenuBar, type Menu, type MenuItem } from './modern/MenuBar.ts';
 import { PlayerCard } from './modern/PlayerCard.ts';
 import { PocketPicker } from './modern/PocketPicker.ts';
-import { CANCEL_PULL, FineAim, MAX_TIP, PowerBar, SpinPad } from './modern/ShotControls.ts';
+import {
+  CANCEL_PULL,
+  ElevationSlider,
+  FineAim,
+  MAX_TIP,
+  PowerBar,
+  SpinPad,
+  stepButton,
+} from './modern/ShotControls.ts';
 import { Toasts } from './modern/Toasts.ts';
 
 const FOUL_TEXT: Record<Foul, string> = {
@@ -71,7 +79,10 @@ export class UiRoot {
   private readonly status: HTMLElement;
   private readonly power: PowerBar;
   private readonly spin: SpinPad;
+  private readonly elevation: ElevationSlider;
   private readonly fine: FineAim;
+  /** The initial of the player whose turn it is, at the start of the status pill. */
+  private readonly turnMark: HTMLElement;
   private readonly safety: HTMLButtonElement;
   private readonly action: HTMLButtonElement;
   private readonly viewButton: HTMLButtonElement;
@@ -85,6 +96,8 @@ export class UiRoot {
   /** Where the cards stand when they are large. */
   private readonly players: HTMLElement;
   private readonly dock: HTMLElement;
+  /** The status pill over the dock, and the dock: what the bottom of the screen holds. */
+  private readonly bottom: HTMLElement;
   /** The shot clock: which turn it is timing, and the seconds used. */
   private clock = { key: '', used: 0 };
   private lastTick = performance.now();
@@ -178,7 +191,21 @@ export class UiRoot {
       },
     });
 
-    // The dock along the bottom.
+    // Along the bottom: what is going on, in a pill over the dock, and the dock's three parts,
+    // each named: the spin (the cue ball's face and the spin in words), the fine aim (the wheel
+    // between two step buttons) and the cue (its elevation and the call of a safety).
+    this.bottom = el('div', 'hud-bottom');
+    const pill = el('div', 'm-card status-pill');
+    this.turnMark = el('span', 'status-mark');
+    this.turnMark.setAttribute('aria-hidden', 'true');
+    this.status = el('div', 'status');
+    this.status.dataset.testid = 'status';
+    this.status.setAttribute('role', 'status');
+    this.action = el('button', 'm-btn m-btn-primary dock-action');
+    this.action.type = 'button';
+    this.action.addEventListener('click', () => void this.continueMatch());
+    pill.append(this.turnMark, this.status, this.action);
+
     this.dock = el('div', 'm-dock hud-dock');
     this.spin = new SpinPad({
       tip: () => ({ a: this.app.aim.a, b: this.app.aim.b }),
@@ -187,6 +214,9 @@ export class UiRoot {
         this.app.aim.b = b;
         this.app.refresh();
       },
+      enabled: () => this.app.canAct(),
+    });
+    this.elevation = new ElevationSlider({
       elevation: () => this.app.elevation,
       setElevation: (degrees) => {
         this.app.aim.elevation = degrees;
@@ -198,8 +228,25 @@ export class UiRoot {
       (angle) => this.run({ kind: 'aim', angle }),
       () => this.app.canAct(),
     );
-    this.status = el('div', 'status');
-    this.status.dataset.testid = 'status';
+    const canAct = () => this.app.canAct();
+    const aim = el('div', 'dock-aim');
+    aim.append(
+      stepButton(
+        LINE_ICONS.prev,
+        'Aim a touch left (,)',
+        () => this.run({ kind: 'aim', angle: FINE_AIM_STEP }),
+        canAct,
+      ),
+      this.fine.element,
+      stepButton(
+        LINE_ICONS.next,
+        'Aim a touch right (.)',
+        () => this.run({ kind: 'aim', angle: -FINE_AIM_STEP }),
+        canAct,
+      ),
+    );
+    const step = Math.round((FINE_AIM_STEP * 180 * 100) / Math.PI) / 100;
+    const aimNote = el('div', 'dock-note', `${step}° a step · drag, or , and .`);
     this.safety = el('button', 'chip safety');
     this.safety.type = 'button';
     this.safety.textContent = 'Safety';
@@ -208,14 +255,22 @@ export class UiRoot {
       this.app.safety = !this.app.safety;
       this.render();
     });
-    this.action = el('button', 'm-btn m-btn-primary dock-action');
-    this.action.type = 'button';
-    this.action.addEventListener('click', () => void this.continueMatch());
-    const middle = el('div', 'dock-middle');
-    const chips = el('div', 'dock-row');
-    chips.append(this.status, this.safety, this.action);
-    middle.append(chips, this.fine.element);
-    this.dock.append(this.spin.element, middle);
+    const cue = el('div', 'dock-cue');
+    cue.append(this.elevation.element, this.safety);
+    const section = (name: string, ...parts: HTMLElement[]) => {
+      const part = el('section', `dock-section dock-${name.toLowerCase()}-part`);
+      part.setAttribute('aria-label', name);
+      const body = el('div', 'dock-body');
+      body.append(...parts);
+      part.append(el('div', 'dock-label', name), body);
+      return part;
+    };
+    this.dock.append(
+      section('Spin', this.spin.element),
+      section('Aim', aim, aimNote),
+      section('Cue', cue),
+    );
+    this.bottom.append(pill, this.dock);
 
     this.picker = new PocketPicker({
       pockets: () => this.app.match.table.pockets,
@@ -233,7 +288,7 @@ export class UiRoot {
       this.top,
       this.players,
       this.power.element,
-      this.dock,
+      this.bottom,
       this.toasts.element,
       this.picker.element,
     );
@@ -263,7 +318,7 @@ export class UiRoot {
     });
     window.addEventListener('keydown', (event) => this.onKey(event));
     const observer = new ResizeObserver(() => this.measure());
-    for (const part of [this.top, this.players, this.dock, this.power.element]) {
+    for (const part of [this.top, this.players, this.bottom, this.power.element]) {
       observer.observe(part);
     }
     window.addEventListener('resize', () => this.measure());
@@ -891,6 +946,10 @@ export class UiRoot {
     const canAct = app.canAct();
     const needsCall = canAct && app.match.needsCall();
     this.status.textContent = this.statusText(state, needsCall);
+    // The player the status is about: the one to act, or the winner once the rack is over.
+    const shown =
+      state.rack.phase === 'over' ? (state.rack.winner ?? state.rack.turn) : state.rack.turn;
+    this.turnMark.textContent = state.setup.names[shown].trim().charAt(0).toUpperCase() || '?';
     this.safety.hidden = practice || state.rack.phase !== 'play';
     this.safety.disabled = !canAct;
     this.safety.classList.toggle('on', app.safety);
@@ -900,6 +959,7 @@ export class UiRoot {
     this.action.textContent = state.winner !== null ? 'Rematch' : 'Next rack';
     this.power.render();
     this.spin.render();
+    this.elevation.render();
     this.fine.render();
     this.picker.render(needsCall && !app.playing);
     const top = app.rig.view === 'top';
@@ -914,7 +974,7 @@ export class UiRoot {
     const names = state.setup.names;
     const rack = state.rack;
     const name = names[rack.turn];
-    if (app.playing) return '';
+    if (app.playing) return 'Balls rolling…';
     if (state.winner !== null) return `${names[state.winner]} wins the match`;
     if (rack.phase === 'over') return `${names[rack.winner ?? 0]} wins the rack`;
     if (rack.phase === 'decision') return `${name} to choose`;
@@ -956,7 +1016,7 @@ export class UiRoot {
     const h = window.innerHeight;
     const top = this.top.getBoundingClientRect();
     this.element.style.setProperty('--bar-bottom', `${Math.round(top.bottom)}px`);
-    const dock = this.dock.getBoundingClientRect();
+    const dock = this.bottom.getBoundingClientRect();
     const power = this.power.element.getBoundingClientRect();
     const left = this.app.settings.get().leftHanded;
     const side = power.width > 0 ? (left ? power.right : w - power.left) : 0;

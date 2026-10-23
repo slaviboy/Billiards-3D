@@ -287,3 +287,27 @@ test('each shot starts from no power, and a pull taken back to the start shoots 
   await expect(power).toHaveClass(/idle/, { timeout: 20000 });
   expect((await state()).power).toBe(0);
 });
+
+test('the dock names its parts, reads the spin in words, centres it and aims in steps', async ({
+  page,
+}) => {
+  const dock = page.locator('.hud-dock');
+  for (const name of ['Spin', 'Aim', 'Cue']) {
+    await expect(dock.getByRole('region', { name })).toBeVisible();
+  }
+  await expect(page.locator('.status-pill')).toBeVisible();
+
+  const spin = page.getByTestId('spin');
+  await expect(spin).toContainText('Stun');
+  await expect(spin).toContainText('No side');
+  for (let i = 0; i < 5; i++) await page.keyboard.press('i');
+  await expect(spin).toContainText('Top ¼');
+  await page.getByRole('button', { name: 'Strike the centre (C)' }).click();
+  await expect(spin).toContainText('Stun');
+  expect(await debug(page, () => window.__poolDebug!.aim().b)).toBe(0);
+
+  const before = (await debug(page, () => window.__poolDebug!.aim())).heading;
+  await page.getByRole('button', { name: 'Aim a touch left (,)' }).click();
+  const after = (await debug(page, () => window.__poolDebug!.aim())).heading;
+  expect(after - before).toBeCloseTo((0.05 * Math.PI) / 180, 6);
+});

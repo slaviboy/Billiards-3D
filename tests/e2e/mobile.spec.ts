@@ -21,7 +21,7 @@ async function overflowing(page: Page): Promise<string[]> {
   return page.evaluate(() =>
     [
       ...document.querySelectorAll<HTMLElement>(
-        '.hud-top, .hud-dock, .power, .status, .fine-aim, .spin, .player-card, .hud-buttons',
+        '.hud-top, .status-pill, .hud-dock, .power, .status, .fine-aim, .spin, .player-card, .hud-buttons',
       ),
     ]
       .filter((e) => {

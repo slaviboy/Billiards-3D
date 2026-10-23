@@ -456,8 +456,11 @@
     cursor: default;
   }
 
-  /* The dock along the bottom: the spin and elevation, what is going on, the fine aim. */
-  .hud-dock {
+  /*
+   * Along the bottom: what is going on, in a pill, and under it the dock's three named parts: the
+   * spin, the fine aim and the cue. The two stand together in the middle of the screen.
+   */
+  .hud-bottom {
     position: fixed;
     bottom: max(0.8rem, env(safe-area-inset-bottom));
     left: 50%;
@@ -465,32 +468,143 @@
     box-sizing: border-box;
     width: min(64rem, calc(100vw - 1.6rem));
     display: flex;
+    flex-direction: column;
     align-items: center;
-    gap: 1.2rem;
-    padding: 0.8rem 1.2rem 0.8rem 0.8rem;
+    gap: 0.6rem;
+    pointer-events: none;
+  }
+
+  .hud-bottom > * {
+    pointer-events: auto;
+  }
+
+  /* The status: the initial of the player it is about, what is going on, and Next rack. */
+  .status-pill {
+    box-sizing: border-box;
+    max-width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    min-height: 3.6rem;
+    padding: 0.35rem 1.4rem 0.35rem 0.35rem;
+    border-radius: 1.8rem;
+  }
+
+  .status-pill:has(.dock-action:not([hidden])) {
+    padding-right: 0.35rem;
+  }
+
+  .status-mark {
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: 2.8rem;
+    height: 2.8rem;
+    border-radius: 50%;
+    background: radial-gradient(circle at 34% 28%, #3b3e47, #1b1d22 72%);
+    box-shadow: 0 0 0 1px var(--m-gold-line);
+    color: var(--m-gold-hi);
+    font: 600 1.4rem var(--m-serif);
+  }
+
+  .hud-dock {
+    box-sizing: border-box;
+    width: 100%;
+    display: flex;
+    align-items: stretch;
+    padding: 0.7rem 0.4rem 0.8rem;
     border-radius: 1.2rem;
   }
 
   .pool-ui.left-handed .hud-dock {
     flex-direction: row-reverse;
-    padding: 0.8rem 0.8rem 0.8rem 1.2rem;
+  }
+
+  /* Each part: its name in small capitals over what it holds, hairlines between the parts. */
+  .dock-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+    min-width: 0;
+    padding: 0 1rem;
+  }
+
+  .dock-section + .dock-section {
+    border-left: 1px solid var(--m-line);
+  }
+
+  .pool-ui.left-handed .dock-section + .dock-section {
+    border-right: 1px solid var(--m-line);
+    border-left: 0;
+  }
+
+  .dock-spin-part,
+  .dock-cue-part {
+    flex: none;
+  }
+
+  .dock-aim-part {
+    flex: 1 1 auto;
+  }
+
+  .dock-label {
+    color: var(--m-faint);
+    font: 700 0.95rem var(--m-font);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  .dock-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 0.5rem;
+    min-width: 0;
   }
 
   .spin {
     flex: none;
     display: flex;
     align-items: center;
-    gap: 0.6rem;
+    gap: 0.9rem;
   }
 
-  .spin.disabled {
+  .spin.disabled,
+  .spin-elevation.disabled {
     opacity: 0.5;
+  }
+
+  /* The spin in words, and the button that centres the tip again. */
+  .spin-readout {
+    display: grid;
+    justify-items: start;
+    gap: 0.1rem;
+    min-width: 6.4rem;
+    color: var(--m-text);
+    font: 600 1.2rem/1.3 var(--m-font);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .spin-side {
+    color: var(--m-muted);
+  }
+
+  .spin-centre.m-icon-btn {
+    width: 2.6rem;
+    height: 2.6rem;
+    margin: 0.2rem 0 0 -0.6rem;
+  }
+
+  .spin-centre.m-icon-btn svg {
+    width: 1.5rem;
+    height: 1.5rem;
   }
 
   .spin-ball {
     position: relative;
-    width: 6.4rem;
-    height: 6.4rem;
+    width: 5.8rem;
+    height: 5.8rem;
     border-radius: 50%;
     background: radial-gradient(circle at 36% 30%, #ffffff, #eae5d8 45%, #b9b2a2 100%);
     box-shadow:
@@ -594,28 +708,53 @@
       var(--m-ring);
   }
 
-  .spin.disabled .elevation-track {
+  .spin-elevation.disabled .elevation-track {
     cursor: default;
   }
 
-  /* One column that never grows past the dock for a long status line (it is cut short). */
-  .dock-middle {
-    flex: 1;
-    min-width: 0;
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    gap: 0.7rem;
-  }
-
-  .dock-row {
+  /* The fine aim: the wheel between two step buttons, and how far a step turns under them. */
+  .dock-aim {
     display: flex;
     align-items: center;
-    gap: 0.8rem;
-    min-height: 3.2rem;
+    gap: 0.4rem;
+  }
+
+  .dock-aim .fine-aim {
+    flex: 1 1 auto;
+    min-width: 6rem;
+  }
+
+  .step-btn.m-icon-btn {
+    flex: none;
+    width: 2.8rem;
+    height: 2.8rem;
+    border: 1px solid var(--m-line);
+    background: var(--m-raised);
+  }
+
+  .step-btn.m-icon-btn svg {
+    width: 1.6rem;
+    height: 1.6rem;
+  }
+
+  .dock-note {
+    overflow: hidden;
+    color: var(--m-faint);
+    font: 500 1.05rem var(--m-font);
+    text-align: center;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* The cue: its elevation, and the call of a safety. */
+  .dock-cue {
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
   }
 
   .status {
-    flex: 1;
+    flex: 1 1 auto;
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -657,12 +796,13 @@
 
   .dock-action {
     flex: none;
-    height: 3rem;
+    height: 2.8rem;
+    border-radius: 1.4rem;
   }
 
   .fine-aim {
     position: relative;
-    height: 2.6rem;
+    height: 2.8rem;
     border-radius: 1.3rem;
     background: rgba(0, 0, 0, 0.3);
     box-shadow: inset 0 0 0 1px var(--m-line);
@@ -831,15 +971,41 @@
       height: min(34vh, 28rem);
     }
 
-    /* The status may take two lines rather than be cut short. */
+    /* A tighter dock: the ball smaller, the spin and the step size not spelt out. */
     .status {
-      display: -webkit-box;
-      -webkit-box-orient: vertical;
-      -webkit-line-clamp: 2;
-      line-clamp: 2;
-      white-space: normal;
       font-size: 1.25rem;
-      line-height: 1.25;
+    }
+
+    .dock-section {
+      padding: 0 0.6rem;
+    }
+
+    .spin-ball {
+      width: 5rem;
+      height: 5rem;
+    }
+
+    .spin-readout {
+      min-width: 0;
+    }
+
+    .spin-height,
+    .spin-side,
+    .dock-note {
+      display: none;
+    }
+
+    .spin-centre.m-icon-btn {
+      margin: 0;
+    }
+
+    .step-btn.m-icon-btn {
+      width: 2.4rem;
+      height: 2.4rem;
+    }
+
+    .dock-aim .fine-aim {
+      min-width: 3rem;
     }
   }
 
@@ -963,7 +1129,7 @@
 
   /* The dock stays in the middle, narrowed alike on both sides so as not to reach under the
    * cards (on a narrow screen it may, at its least width; the cards then end above it). */
-  .pool-ui.large-cards .hud-dock {
+  .pool-ui.large-cards .hud-bottom {
     width: min(64rem, max(36rem, calc(100vw - 2 * (var(--edge-left) + var(--side) + 0.8rem))));
   }
 
@@ -1293,7 +1459,7 @@
       display: none;
     }
 
-    .pool-ui.large-cards .hud-dock {
+    .pool-ui.large-cards .hud-bottom {
       width: min(64rem, calc(100vw - 1.6rem));
     }
 

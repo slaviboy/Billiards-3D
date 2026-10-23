@@ -81,7 +81,12 @@ async function problems(page: Page): Promise<string[]> {
         .map((e) => ({ name: selector, r: e.getBoundingClientRect() }))
         .filter(({ r }) => r.width > 0 && r.height > 0);
     const cards = [...box('[data-testid="player-0"]'), ...box('[data-testid="player-1"]')];
-    const others = [...box('.hud-top'), ...box('.hud-dock'), ...box('.power')];
+    const others = [
+      ...box('.hud-top'),
+      ...box('.status-pill'),
+      ...box('.hud-dock'),
+      ...box('.power'),
+    ];
     for (const { name, r } of [...cards, ...others]) {
       if (r.left < 0 || r.top < 0 || r.right > innerWidth || r.bottom > innerHeight) {
         found.push(`${name} off the screen`);
