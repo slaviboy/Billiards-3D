@@ -51,7 +51,7 @@ export const DEFAULT_SETTINGS: Settings = {
   quality: 'auto',
   cloth: 'blueGreen',
   leftHanded: false,
-  keepZoom: false,
+  keepZoom: true,
   name: 'Player 1',
   name2: 'Player 2',
   table: '9ft',
@@ -59,7 +59,10 @@ export const DEFAULT_SETTINGS: Settings = {
   shotClock: 0,
 };
 
-const KEY = 'pool.settings.v1';
+const KEY = 'pool.settings.v2';
+/** Where settings were kept while the view refitted its zoom at each angle by default. They are
+ * read once, the zoom kept from then on as it now is by default, and saved under KEY. */
+const OLD_KEY = 'pool.settings.v1';
 export const RACES = [1, 3, 5, 7] as const;
 export const SHOT_CLOCKS = [0, 30, 60] as const;
 export const SPEEDS = [1, 1.5, 2] as const;
@@ -93,7 +96,9 @@ export function sanitize(value: unknown): Settings {
 export function loadSettings(storage: Storage | null = safeStorage()): Settings {
   try {
     const raw = storage?.getItem(KEY);
-    return sanitize(raw ? JSON.parse(raw) : null);
+    if (raw) return sanitize(JSON.parse(raw));
+    const old = storage?.getItem(OLD_KEY);
+    return old ? { ...sanitize(JSON.parse(old)), keepZoom: true } : DEFAULT_SETTINGS;
   } catch {
     return DEFAULT_SETTINGS;
   }
@@ -102,6 +107,7 @@ export function loadSettings(storage: Storage | null = safeStorage()): Settings 
 export function saveSettings(settings: Settings, storage: Storage | null = safeStorage()): void {
   try {
     storage?.setItem(KEY, JSON.stringify(settings));
+    storage?.removeItem(OLD_KEY);
   } catch {
     // Storage full or blocked: the settings last for this visit only.
   }

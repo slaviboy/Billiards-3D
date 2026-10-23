@@ -53,8 +53,8 @@ a friend online** to invite someone, or **Join a game** to open a link you were 
 - **The camera** works as on the board of the chess game this one shares its interface with: drag
   a rail's corner (or the floor) to turn and tilt, a rail's side to pan, right-drag anywhere to
   turn, the wheel to zoom. The arrow keys turn and tilt, Page Up and Down zoom, Home resets, F looks
-  from the other end and T switches to the top view. Two fingers twist, pinch and pan. Settings can
-  keep the zoom while the view turns.
+  from the other end and T switches to the top view. Two fingers twist, pinch and pan. The view
+  keeps its zoom while it turns; Settings can refit the table to the screen at each angle instead.
 
 Every key and gesture is listed in the game under **Keyboard and mouse** (or press `?`).
 
