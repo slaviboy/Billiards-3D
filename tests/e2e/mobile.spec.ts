@@ -10,8 +10,8 @@
  */
 
 // On a phone, upright and on its side: the interface leaves every pocket and the cue ball in
-// sight in both views, nothing spills off the screen, and a finger can work the controls without
-// leaving their tips standing.
+// sight in both views, nothing spills off the screen, the dock is no taller than its controls and
+// they are a finger's size, and a finger can work them without leaving their tips standing.
 
 import { expect, test, type Page } from '@playwright/test';
 import { covered, settle } from '../support/screen.ts';
@@ -50,6 +50,23 @@ for (const [name, width, height] of [
       await page.evaluate(() => window.__poolDebug!.setView('top'));
       await settle(page);
       expect(await covered(page)).toEqual([]);
+    });
+
+    test('keeps the dock low, and its controls a finger high', async ({ page }) => {
+      await page.goto('./');
+      await expect(page.locator('#app[data-ready="true"]')).toBeAttached();
+      await page.locator('.mode-card[data-mode="local"]').tap();
+      await page.getByRole('button', { name: 'Start' }).tap();
+      // Past the break, so that the call of a safety shows.
+      await page.evaluate(() =>
+        window.__poolDebug!.arrange({ groups: [1, 2], turn: 0, onTable: [0, 1, 8, 9] }),
+      );
+      const height = async (selector: string) =>
+        (await page.locator(selector).first().boundingBox())!.height;
+      expect(await height('.hud-dock')).toBeLessThanOrEqual(64);
+      for (const control of ['.spin-ball', '.step-btn', '.fine-aim', '.safety']) {
+        expect(await height(control)).toBeGreaterThanOrEqual(36);
+      }
     });
 
     test('a finger works the spin and the power, and leaves no tip standing', async ({ page }) => {

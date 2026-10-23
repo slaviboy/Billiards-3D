@@ -1088,35 +1088,88 @@
       font-size: 1.25rem;
     }
 
-    .dock-section {
-      padding: 0 0.6rem;
-    }
-
-    .spin-ball {
-      width: 5rem;
-      height: 5rem;
-    }
-
     .spin-readout {
       min-width: 0;
     }
 
     .spin-height,
-    .spin-side,
-    .dock-note {
+    .spin-side {
       display: none;
-    }
-
-    .spin-centre.m-icon-btn {
-      margin: 0;
-    }
-
-    .step-btn.m-icon-btn {
-      width: 2.4rem;
     }
 
     .dock-aim .fine-aim {
       min-width: 3rem;
+    }
+  }
+
+  /*
+   * Phones, upright or on their side: a dock no taller than its controls, and those as large as a
+   * finger needs. The parts go unnamed (the (i) guide names them), the step size unspelt, the
+   * spin's centring beside its words, and the cue's degrees under a shorter groove.
+   */
+  @media (max-width: 640px), (max-height: 500px) {
+    .hud-bottom {
+      bottom: max(0.5rem, env(safe-area-inset-bottom));
+      gap: 0.4rem;
+    }
+
+    .hud-dock {
+      padding: 0.4rem 0.2rem;
+    }
+
+    .dock-label,
+    .dock-note {
+      display: none;
+    }
+
+    .dock-section {
+      gap: 0;
+      padding: 0 0.6rem;
+    }
+
+    .spin {
+      gap: 0.6rem;
+    }
+
+    .spin-ball {
+      width: 5.2rem;
+      height: 5.2rem;
+    }
+
+    .spin-readout {
+      grid-template-columns: auto auto;
+      align-items: center;
+      column-gap: 0.6rem;
+    }
+
+    .spin-centre.m-icon-btn {
+      grid-row: 1 / span 2;
+      grid-column: 2;
+      width: 3.4rem;
+      height: 3.4rem;
+      margin: 0;
+    }
+
+    .dock-aim .fine-aim,
+    .step-btn.m-icon-btn {
+      height: 5.2rem;
+    }
+
+    .step-btn.m-icon-btn {
+      width: 3rem;
+    }
+
+    .spin-elevation {
+      gap: 0.15rem;
+    }
+
+    .elevation-track {
+      height: 3.8rem;
+    }
+
+    .dock-cue .safety {
+      height: 4.2rem;
+      border-radius: 2.1rem;
     }
   }
 
