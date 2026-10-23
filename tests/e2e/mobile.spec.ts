@@ -11,7 +11,8 @@
 
 // On a phone, upright and on its side: the interface leaves every pocket and the cue ball in
 // sight in both views, nothing spills off the screen, the dock is no taller than its controls and
-// they are a finger's size, and a finger can work them without leaving their tips standing.
+// they are a finger's size, the power bar's parts stand in its middle, and a finger can work the
+// controls without leaving their tips standing.
 
 import { expect, test, type Page } from '@playwright/test';
 import { covered, settle } from '../support/screen.ts';
@@ -66,6 +67,17 @@ for (const [name, width, height] of [
       expect(await height('.hud-dock')).toBeLessThanOrEqual(64);
       for (const control of ['.spin-ball', '.step-btn', '.fine-aim', '.safety']) {
         expect(await height(control)).toBeGreaterThanOrEqual(36);
+      }
+    });
+
+    test("stands the power bar's label and groove in its middle", async ({ page }) => {
+      await page.goto('./?menu=0');
+      await expect(page.locator('#app[data-ready="true"]')).toBeAttached();
+      const bar = (await page.locator('.power').boundingBox())!;
+      for (const part of ['.power-label', '.power-track']) {
+        const box = (await page.locator(part).boundingBox())!;
+        expect(box.x).toBeGreaterThanOrEqual(bar.x);
+        expect(box.x - bar.x).toBeCloseTo(bar.x + bar.width - (box.x + box.width), 0);
       }
     });
 

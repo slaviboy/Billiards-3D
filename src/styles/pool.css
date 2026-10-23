@@ -237,6 +237,8 @@
     width: 6.4rem;
     height: min(42vh, 36rem);
     display: grid;
+    /* One column the bar's width, so that a wide label cannot push the groove off its middle. */
+    grid-template-columns: minmax(0, 1fr);
     grid-template-rows: auto 1fr auto;
     justify-items: center;
     gap: 0.6rem;
@@ -1078,9 +1080,11 @@
       display: none;
     }
 
+    /* Its sides thinner, so that "Power" fits between them. */
     .power {
       width: 5.2rem;
       height: min(34vh, 28rem);
+      padding: 1rem 0.4rem;
     }
 
     /* A tighter dock: the ball smaller, the spin and the step size not spelt out. */
