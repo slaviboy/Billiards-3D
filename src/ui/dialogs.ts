@@ -55,6 +55,16 @@ function field(label: string, control: HTMLElement): HTMLElement {
   return row;
 }
 
+/**
+ * A row of choices with its heading. Not a <label>: that would name the first button after it
+ * (the group carries its own name).
+ */
+function choices(label: string, control: HTMLElement): HTMLElement {
+  const row = el('div', 'field');
+  row.append(el('span', '', label), control);
+  return row;
+}
+
 function textInput(value: string, label: string): HTMLInputElement {
   const input = el('input');
   input.type = 'text';
@@ -161,10 +171,10 @@ export function newMatchDialog(settings: Settings): Promise<NewMatch | null> {
     );
     body.append(
       names,
-      field('Table', sizes.element),
-      field('Race to (racks to win)', races.element),
-      field('Shot clock', clocks.element),
-      field('First break', breakers.element),
+      choices('Table', sizes.element),
+      choices('Race to (racks to win)', races.element),
+      choices('Shot clock', clocks.element),
+      choices('First break', breakers.element),
     );
     const actions = el('div', 'dialog-actions');
     actions.append(
@@ -260,12 +270,12 @@ export function settingsDialog(store: Store<Settings>): Promise<void> {
     body.append(
       group(
         'Table',
-        field('Camera', view.element),
+        choices('Camera', view.element),
         keepZoom,
-        field('Aiming guide', guide.element),
+        choices('Aiming guide', guide.element),
         aimAtTouch,
-        field('Shot playback', speed.element),
-        field('Cloth', cloth.element),
+        choices('Shot playback', speed.element),
+        choices('Cloth', cloth.element),
       ),
       group('Sound', sound, field('Volume', volume)),
       group(
@@ -274,7 +284,7 @@ export function settingsDialog(store: Store<Settings>): Promise<void> {
         large,
         left,
         hints,
-        field('Graphics (takes effect when the page reloads)', quality.element),
+        choices('Graphics (takes effect when the page reloads)', quality.element),
       ),
       group('You', field('Name', name)),
     );
