@@ -693,9 +693,10 @@
    * Large cards, for video calls. They stand on their own on the side away from the power bar, a
    * camera's picture across the top of each like a call's; the top bar keeps the race and the
    * buttons, in the corner over the power bar (or, with the menu bar, runs the whole width over
-   * the cards), and the dock and the notes centre in the space left. On a phone held upright they
-   * stand side by side under the top bar instead (the query is kept in step with PHONE_UPRIGHT in
-   * UiRoot.ts, which also sets --bar-bottom, where the top bar ends).
+   * the cards), the notes centre in the space left and the dock stays in the middle, the cards
+   * ending above it where it reaches under them. On a phone held upright they stand side by side
+   * under the top bar instead (the query is kept in step with PHONE_UPRIGHT in UiRoot.ts, which
+   * also sets --bar-bottom, where the top bar ends).
    */
   .pool-ui {
     --edge-top: max(0.8rem, env(safe-area-inset-top));
@@ -755,20 +756,6 @@
   .pool-ui.left-handed .hud-players {
     left: auto;
     right: var(--edge-right);
-  }
-
-  .pool-ui.large-cards .hud-dock {
-    left: calc(var(--edge-left) + var(--side) + 0.8rem);
-    right: var(--edge-right);
-    width: auto;
-    max-width: 64rem;
-    margin: 0 auto;
-    transform: none;
-  }
-
-  .pool-ui.large-cards.left-handed .hud-dock {
-    left: var(--edge-left);
-    right: calc(var(--edge-right) + var(--side) + 0.8rem);
   }
 
   .pool-ui.large-cards .toasts {
@@ -990,7 +977,9 @@
     height: 1.8rem;
   }
 
-  /* As tall as a 4:3 picture, or less where two would not fit the screen's height. */
+  /* As tall as a 4:3 picture, or less where two would not fit between the cards' top and their
+   * bottom: the dock's top where the dock reaches under them, else the screen's (UiRoot sets
+   * --players-bottom). */
   .player-card.large .m-avatar-video {
     grid-area: video;
     position: static;
@@ -998,10 +987,12 @@
     height: auto;
     aspect-ratio: 4 / 3;
     max-height: calc(
-      (100vh - var(--players-top) - var(--edge-bottom) - 1rem) / 2 - var(--card-info) - 0.7rem
+      (var(--players-bottom, calc(100vh - var(--edge-bottom))) - var(--players-top) - 1.6rem) / 2 -
+        var(--card-info) - 0.7rem
     );
     max-height: calc(
-      (100dvh - var(--players-top) - var(--edge-bottom) - 1rem) / 2 - var(--card-info) - 0.7rem
+      (var(--players-bottom, calc(100dvh - var(--edge-bottom))) - var(--players-top) - 1.6rem) / 2 -
+        var(--card-info) - 0.7rem
     );
     border-radius: 1.1rem;
   }
@@ -1073,13 +1064,6 @@
 
     .pool-ui.large-cards.menu-bar .race {
       display: none;
-    }
-
-    .pool-ui.large-cards .hud-dock,
-    .pool-ui.large-cards.left-handed .hud-dock {
-      left: var(--edge-left);
-      right: var(--edge-right);
-      max-width: none;
     }
 
     .pool-ui.large-cards .toasts,

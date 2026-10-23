@@ -941,9 +941,9 @@ export class UiRoot {
 
   /**
    * Tells the camera how much of each edge the interface covers, the large cards where the top
-   * bar ends (they start under it on a phone held upright, or with the menu bar), and the notes
-   * where the top's parts end. Large cards cover the side away from the power bar, or the top on
-   * a phone held upright.
+   * bar ends (they start under it on a phone held upright, or with the menu bar) and where they
+   * must end (above the dock, where it reaches under them), and the notes where the top's parts
+   * end. Large cards cover the side away from the power bar, or the top on a phone held upright.
    */
   private measure(): void {
     const w = window.innerWidth;
@@ -961,6 +961,10 @@ export class UiRoot {
       left: left ? side : 0,
     };
     const players = this.players.getBoundingClientRect();
+    // The dock stays in the middle; where it reaches under the large cards, they end above it.
+    const under = players.width > 0 && players.left < dock.right && players.right > dock.left;
+    if (under) this.element.style.setProperty('--players-bottom', `${Math.round(dock.top)}px`);
+    else this.element.style.removeProperty('--players-bottom');
     if (!this.players.hidden && players.width > 0) {
       const inRow = window.matchMedia(PHONE_UPRIGHT).matches;
       if (inRow) insets.top = Math.max(insets.top, players.bottom);
