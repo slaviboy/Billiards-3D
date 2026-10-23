@@ -117,7 +117,7 @@ export class UiRoot {
     this.menuHead = el('div', 'hud-menus');
     const brand = el('div', 'm-brand');
     brand.setAttribute('aria-label', 'Pool');
-    brand.innerHTML = `<span class="m-brand-mark">${EIGHT_BALL}</span><span class="m-brand-name" aria-hidden="true">Pool</span>`;
+    brand.innerHTML = `<span class="m-brand-mark">${EIGHT_BALL}</span><span class="m-brand-name" aria-hidden="true">Pool<small>3D</small></span>`;
     this.menuHead.append(brand, this.menuBar.element);
     this.cards = [new PlayerCard(0), new PlayerCard(1)];
     this.race = el('div', 'race');
@@ -125,11 +125,29 @@ export class UiRoot {
       this.run({ kind: 'toggleView' }),
     );
     this.menuButton = iconButton(LINE_ICONS.menu, 'Menu (Esc)', () => void this.pause());
+    // With the menu bar, New game stands by the full screen button, as in the chess game: it
+    // opens the choice of game.
+    const newGame = el('button', 'm-btn m-btn-primary m-new-game');
+    newGame.type = 'button';
+    newGame.innerHTML = `${LINE_ICONS.plus}<span>New game</span>`;
+    newGame.setAttribute('aria-label', 'New game');
+    newGame.addEventListener('click', () => void this.menu());
     const buttons = el('div', 'hud-buttons m-topbar-end');
     buttons.append(
       this.viewButton,
-      iconButton(LINE_ICONS.restart, 'Reset the view (Home)', () => this.run({ kind: 'home' })),
-      iconButton(LINE_ICONS.fullscreen, 'Full screen', () => this.toggleFullscreen()),
+      iconButton(
+        LINE_ICONS.restart,
+        'Reset the view (Home)',
+        () => this.run({ kind: 'home' }),
+        'm-icon-btn hud-reset',
+      ),
+      newGame,
+      iconButton(
+        LINE_ICONS.fullscreen,
+        'Full screen',
+        () => this.toggleFullscreen(),
+        'm-icon-btn hud-fullscreen',
+      ),
       this.menuButton,
     );
     this.top.append(

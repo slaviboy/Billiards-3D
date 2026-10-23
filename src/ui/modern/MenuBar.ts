@@ -13,7 +13,8 @@
 // one is open, hovering another switches to it (on a touch screen, tapping it does). Alt+letter
 // opens a menu, the arrow keys move through items and submenus, Enter chooses and Escape closes.
 // Labels mark their access key with "&" ("&Game"). Check marks, shortcuts and submenu arrows are
-// drawn as icons and key caps. Menus keep on the screen: near its right edge they open leftward.
+// drawn as icons and key caps. Menus keep on the screen: near its right edge they open leftward,
+// or on a narrow screen, over the menu.
 
 import { LINE_ICONS } from '../icons.ts';
 
@@ -201,10 +202,16 @@ export class MenuBar {
     sub.style.left = `${rect.right - 2}px`;
     sub.style.top = `${rect.top - 3}px`;
     document.body.append(sub);
-    // Without the room on the right, it opens to the left of its entry.
+    // Without the room on the right, it opens to the left of its entry; without it on either side
+    // (a narrow screen), under its entry, over the menu, against the screen's right edge.
     if (sub.getBoundingClientRect().right > window.innerWidth - EDGE) {
       sub.classList.add('leftward');
       sub.style.left = `${rect.left + 2 - sub.offsetWidth}px`;
+      if (sub.getBoundingClientRect().left < EDGE) {
+        sub.classList.replace('leftward', 'over');
+        sub.style.left = `${Math.max(EDGE, window.innerWidth - EDGE - sub.offsetWidth)}px`;
+        sub.style.top = `${rect.bottom}px`;
+      }
     }
     this.open.sub = sub;
     this.open.subEntry = entry;

@@ -9,12 +9,11 @@
  * License, or (at your option) any later version. See the LICENSE file for the full terms.
  */
 
-// The menu bar: a computer has it in place of the menu button, in a top bar no wider than what it
-// holds, over the cards; its menus change the view and the settings, open the dialogs and concede
-// a rack; the keys work them without moving the camera, and Escape still opens the pause menu.
-// With the controls on the left the bar keeps to the right, and its menus on the screen. A phone
-// has the menu button until the bar is chosen, and the bar then fits the screen and leaves the
-// table in sight.
+// The menu bar: a computer has it in place of the menu button, in a top bar across the width over
+// the cards, with New game at its end; its menus change the view and the settings, open the
+// dialogs and concede a rack; the keys work them without moving the camera, and Escape still opens
+// the pause menu. A phone has the menu button until the bar is chosen, and the bar then fits the
+// screen, leaves the table in sight and keeps its menus on the screen.
 
 import { expect, test, type Page } from '@playwright/test';
 import { covered, settle } from '../support/screen.ts';
@@ -43,14 +42,20 @@ test('a computer has the menu bar, and its menus do what the menu did', async ({
   const bar = page.getByRole('menubar', { name: 'Main menu' });
   await expect(bar).toBeVisible();
   await expect(page.getByRole('button', { name: 'Menu (Esc)' })).toBeHidden();
-  // The top bar is as wide as what it holds, in the corner over the cards.
+  // The top bar runs the width of the screen, over the cards.
   const top = (await page.locator('.hud-top').boundingBox())!;
-  const buttons = (await page.locator('.hud-buttons').boundingBox())!;
   const cards = (await page.locator('.hud-players').boundingBox())!;
-  expect(top.x + top.width - (buttons.x + buttons.width)).toBeLessThan(16);
-  expect(top.width).toBeLessThan(1174 * 0.7);
-  expect(Math.abs(top.x - cards.x)).toBeLessThan(1);
+  expect(top.x).toBeLessThan(16);
+  expect(1174 - (top.x + top.width)).toBeLessThan(16);
   expect(cards.y).toBeGreaterThan(top.y + top.height);
+  await expect(page.locator('.m-brand-name')).toHaveText('Pool3D');
+
+  // New game opens the choice of game.
+  await page.getByRole('button', { name: 'New game' }).click();
+  await expect(page.locator('.main-menu')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.dialog')).toHaveCount(0);
+
   const open = (menu: string) => bar.getByRole('menuitem', { name: menu, exact: true }).click();
 
   await open('View');
@@ -72,6 +77,9 @@ test('a computer has the menu bar, and its menus do what the menu did', async ({
 
   // The keys: Alt+V opens the View menu, the arrows move in it and Escape shuts it, and none of
   // them turns the camera; Escape with no menu open is still the pause menu.
+  // The mouse rests on the table, away from where the menu opens (hovering an entry would take
+  // the focus and open its submenu).
+  await page.mouse.move(700, 500);
   await settle(page);
   const camera = await page.evaluate(() => window.__poolDebug!.camera());
   await page.keyboard.press('Alt+V');
@@ -97,36 +105,6 @@ test('a computer has the menu bar, and its menus do what the menu did', async ({
   await expect(page.locator('.result-dialog')).toContainText('conceded the rack');
 });
 
-test('with the controls on the left, the bar keeps right and its menus on the screen', async ({
-  page,
-}) => {
-  await page.addInitScript(() =>
-    localStorage.setItem('pool.settings.v2', JSON.stringify({ leftHanded: true })),
-  );
-  await startMatch(page);
-  const width = page.viewportSize()!.width;
-  const top = (await page.locator('.hud-top').boundingBox())!;
-  expect(width - (top.x + top.width)).toBeLessThan(16);
-  const bar = page.getByRole('menubar', { name: 'Main menu' });
-  for (const [menu, sub] of [
-    ['View', 'Aiming guide'],
-    ['Options', 'Cloth'],
-    ['Help', null],
-  ] as const) {
-    await bar.getByRole('menuitem', { name: menu, exact: true }).click();
-    if (sub) await entry(page, sub).click();
-    await expect(page.locator('.menu')).toHaveCount(sub ? 2 : 1);
-    for (const box of await page
-      .locator('.menu')
-      .evaluateAll((menus) => menus.map((m) => m.getBoundingClientRect().toJSON() as DOMRect))) {
-      expect(box.left).toBeGreaterThanOrEqual(0);
-      expect(box.right).toBeLessThanOrEqual(width);
-    }
-    await page.keyboard.press('Escape');
-    await expect(page.locator('.menu')).toHaveCount(0);
-  }
-});
-
 test.describe('a phone', () => {
   test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
 
@@ -150,8 +128,23 @@ test.describe('a phone', () => {
     expect(top.x + top.width).toBeLessThanOrEqual(390);
     expect(await covered(page)).toEqual([]);
 
-    await bar.getByRole('menuitem', { name: 'Game', exact: true }).tap();
-    const menu = (await page.locator('.menu').boundingBox())!;
-    expect(menu.x + menu.width).toBeLessThanOrEqual(390);
+    // A narrow screen: menus and submenus that would run off its right edge keep on it.
+    for (const [menu, sub] of [
+      ['Game', null],
+      ['Options', 'Cloth'],
+      ['Help', null],
+    ] as const) {
+      await bar.getByRole('menuitem', { name: menu, exact: true }).tap();
+      if (sub) await entry(page, sub).tap();
+      await expect(page.locator('.menu')).toHaveCount(sub ? 2 : 1);
+      for (const box of await page
+        .locator('.menu')
+        .evaluateAll((menus) => menus.map((m) => m.getBoundingClientRect().toJSON() as DOMRect))) {
+        expect(box.left).toBeGreaterThanOrEqual(0);
+        expect(box.right).toBeLessThanOrEqual(390);
+      }
+      await bar.getByRole('menuitem', { name: menu, exact: true }).tap();
+      await expect(page.locator('.menu')).toHaveCount(0);
+    }
   });
 });

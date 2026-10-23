@@ -574,8 +574,8 @@
       display: none;
     }
 
-    .hud-buttons .m-icon-btn:nth-child(2),
-    .hud-buttons .m-icon-btn:nth-child(3) {
+    .hud-buttons .hud-reset,
+    .hud-buttons .hud-fullscreen {
       display: none;
     }
 
@@ -617,6 +617,26 @@
     display: none;
   }
 
+  /* New game, by the full screen button, comes with the menu bar; where the room is short (with
+   * small cards beside it, or on a phone) only its sign shows. */
+  .m-new-game {
+    height: 3.4rem;
+    margin: 0 0.2rem;
+  }
+
+  .pool-ui:not(.menu-bar) .m-new-game {
+    display: none;
+  }
+
+  .pool-ui.menu-bar:not(.large-cards) .m-new-game {
+    width: 3.4rem;
+    padding: 0;
+  }
+
+  .pool-ui.menu-bar:not(.large-cards) .m-new-game span {
+    display: none;
+  }
+
   /* Without the menu button, the full screen button ends the bar: its tip keeps on the screen. */
   .pool-ui.menu-bar .m-topbar-end > [data-tip]:nth-last-child(2):hover::after,
   .pool-ui.menu-bar .m-topbar-end > [data-tip]:nth-last-child(2):focus-visible::after {
@@ -628,10 +648,10 @@
   /*
    * Large cards, for video calls. They stand on their own on the side away from the power bar, a
    * camera's picture across the top of each like a call's; the top bar keeps the race and the
-   * buttons, in the corner over the power bar (or, with the menu bar, holds it too, in the corner
-   * over the cards), and the dock and the notes centre in the space left. On a phone held upright
-   * they stand side by side under the top bar instead (the query is kept in step with
-   * PHONE_UPRIGHT in UiRoot.ts, which also sets --bar-bottom, where the top bar ends).
+   * buttons, in the corner over the power bar (or, with the menu bar, runs the whole width over
+   * the cards), and the dock and the notes centre in the space left. On a phone held upright they
+   * stand side by side under the top bar instead (the query is kept in step with PHONE_UPRIGHT in
+   * UiRoot.ts, which also sets --bar-bottom, where the top bar ends).
    */
   .pool-ui {
     --edge-top: max(0.8rem, env(safe-area-inset-top));
@@ -661,22 +681,16 @@
     --players-top: calc(var(--bar-bottom, 6rem) + 0.8rem);
   }
 
-  /* With the menu bar the top bar is no wider than what it holds, in the corner over the cards. */
-  .pool-ui.large-cards.menu-bar .hud-top {
-    left: var(--edge-left);
-    right: auto;
-    max-width: calc(100vw - var(--edge-left) - var(--edge-right));
-  }
-
+  /* With the menu bar the top bar runs the whole width over the cards, as in the chess game: the
+   * name and the menus at its start, the race, the buttons and New game at its end. */
+  .pool-ui.large-cards.menu-bar .hud-top,
   .pool-ui.large-cards.menu-bar.left-handed .hud-top {
-    left: auto;
+    left: var(--edge-left);
     right: var(--edge-right);
   }
 
-  /* The race stands apart from the menus, as the game's name does. */
   .pool-ui.large-cards.menu-bar .race {
-    padding-left: 1.2rem;
-    border-left: 1px solid var(--m-line);
+    margin-left: auto;
   }
 
   .hud-players {
@@ -941,6 +955,15 @@
   @media (max-width: 640px) {
     .menubar-item {
       padding: 0 0.8rem;
+    }
+
+    .pool-ui.menu-bar .m-new-game {
+      width: 3.4rem;
+      padding: 0;
+    }
+
+    .pool-ui.menu-bar .m-new-game span {
+      display: none;
     }
 
     .pool-ui.menu-bar:not(.large-cards) .hud-top {

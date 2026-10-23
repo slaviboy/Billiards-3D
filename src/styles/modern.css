@@ -232,6 +232,14 @@
     white-space: nowrap;
   }
 
+  .m-brand-name small {
+    margin-left: 0.5rem;
+    color: var(--m-gold);
+    font: 700 1rem var(--m-font);
+    letter-spacing: 0.18em;
+    vertical-align: 0.45em;
+  }
+
   /* The menu bar, as in the chess game. */
   .menubar {
     display: flex;
@@ -303,6 +311,10 @@
 
   .menu.submenu.leftward {
     margin-left: -0.8rem;
+  }
+
+  .menu.submenu.over {
+    margin: 0.2rem 0 0;
   }
 
   .menu-entry {
