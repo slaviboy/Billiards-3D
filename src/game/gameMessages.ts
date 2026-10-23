@@ -66,6 +66,8 @@ export interface PoolTerms {
   readonly race: number;
   /** Seconds per shot; 0 for none. */
   readonly shotClock: number;
+  /** Whether the aiming guide is drawn, for both players. */
+  readonly guide: boolean;
   readonly size: TableSize;
   /** The two seats' names, the host's and the guest's. */
   readonly names: readonly [string, string];
@@ -165,13 +167,16 @@ const isCoord = (value: unknown): value is number =>
 
 /** The host's terms, if the data is exactly them; null otherwise. */
 export function parseTerms(data: Raw): PoolTerms | null {
-  if (!hasKeys(data, ['seed', 'race', 'shotClock', 'size', 'names', 'host', 'firstBreak'])) {
+  if (
+    !hasKeys(data, ['seed', 'race', 'shotClock', 'guide', 'size', 'names', 'host', 'firstBreak'])
+  ) {
     return null;
   }
-  const { seed, race, shotClock, size, names, host, firstBreak } = data;
+  const { seed, race, shotClock, guide, size, names, host, firstBreak } = data;
   if (typeof seed !== 'string' || !SEED.test(seed)) return null;
   if (!isInt(race, 1, MAX_RACE)) return null;
   if (!(shotClock === 0 || isInt(shotClock, 10, MAX_SHOT_CLOCK))) return null;
+  if (typeof guide !== 'boolean') return null;
   if (!isTableSize(size) || !isSeat(host) || !isSeat(firstBreak)) return null;
   const isName = (v: unknown): v is string => typeof v === 'string' && v.length <= 96;
   if (!pair(names, isName)) return null;
@@ -179,6 +184,7 @@ export function parseTerms(data: Raw): PoolTerms | null {
     seed,
     race,
     shotClock,
+    guide,
     size,
     names: [cleanName(names[0], 'Player 1'), cleanName(names[1], 'Player 2')],
     host,
@@ -351,6 +357,7 @@ export function setupFor(terms: PoolTerms): MatchSetup {
     size: terms.size,
     race: terms.race,
     shotClock: terms.shotClock,
+    guide: terms.guide,
     names: terms.names,
     seed: terms.seed,
     firstBreak: terms.firstBreak,

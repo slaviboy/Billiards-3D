@@ -41,6 +41,7 @@ test('a break in the browser ends exactly as Node simulates it', async ({ page }
     size: '9ft',
     race: 1,
     shotClock: 0,
+    guide: true,
     names: ['Player 1', 'Player 2'],
     seed: 'welcome',
     firstBreak: 0,

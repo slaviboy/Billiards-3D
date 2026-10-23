@@ -163,6 +163,7 @@ export class OnlinePlay implements OnlineHooks {
       table: chosen.size,
       race: chosen.race,
       shotClock: chosen.shotClock,
+      matchGuide: chosen.guide,
     });
     const invite = createInvite();
     const seed = randomSeed();
@@ -176,6 +177,7 @@ export class OnlinePlay implements OnlineHooks {
         seed,
         race: chosen.race,
         shotClock: chosen.shotClock,
+        guide: chosen.guide,
         size: chosen.size,
         names: [cleanName(consent.name, 'Player'), friend],
         host: 0,
@@ -429,9 +431,10 @@ export class OnlinePlay implements OnlineHooks {
     const friend = session.state.get().friendName;
     const names = this.app.match.current.setup.names;
     const breaker = names[this.app.match.current.setup.firstBreak];
+    const unguided = this.app.match.current.setup.guide ? '' : ' No aiming guide in this match.';
     switch (event.kind) {
       case 'joined':
-        this.ui.say(`${friend} joined. ${breaker} breaks.`);
+        this.ui.say(`${friend} joined. ${breaker} breaks.${unguided}`);
         break;
       case 'returned':
         this.ui.say(`${friend} is back.`);
@@ -451,7 +454,7 @@ export class OnlinePlay implements OnlineHooks {
         break;
       }
       case 'rematchStarted':
-        this.ui.say(`Rematch against ${friend}: ${breaker} breaks.`);
+        this.ui.say(`Rematch against ${friend}: ${breaker} breaks.${unguided}`);
         break;
       case 'resigned':
         await noticeDialog('You win the match', `${friend} resigned.`);

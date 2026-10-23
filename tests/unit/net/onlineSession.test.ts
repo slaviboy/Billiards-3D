@@ -90,13 +90,14 @@ function nudge(d: Device) {
 
 describe('OnlineSession with 8-ball', () => {
   it('sets up the match: the host’s terms on both sides, a seat each, names crossing', async () => {
-    const { a, b, host, guest, events } = await game({ race: 5, shotClock: 30 });
+    const { a, b, host, guest, events } = await game({ race: 5, shotClock: 30, guide: false });
     expect(a.table.matches).toHaveLength(1);
     expect(b.table.matches).toEqual(a.table.matches);
     expect(a.table.matches[0]).toMatchObject({
       mode: 'online',
       race: 5,
       shotClock: 30,
+      guide: false,
       names: ['Ana', 'Ben'],
       firstBreak: 0,
     });

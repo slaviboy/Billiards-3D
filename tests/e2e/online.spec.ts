@@ -129,11 +129,17 @@ async function accept(page: Page, title: string, name: string, button: string) {
 }
 
 /** The host asks for an online match (the host breaking first) and returns the link. */
-async function createLink(page: Page, shotClock = 'Off'): Promise<string> {
+async function createLink(page: Page, shotClock = 'Off', guide = 'On'): Promise<string> {
   await page.locator('.mode-card[data-mode="online"]').click();
   const terms = page.getByRole('dialog', { name: 'Play a friend online' });
   await terms.getByRole('radio', { name: 'You', exact: true }).click();
-  await terms.getByRole('radio', { name: shotClock, exact: true }).click();
+  const choose = (group: string, name: string) =>
+    terms
+      .getByRole('radiogroup', { name: group })
+      .getByRole('radio', { name, exact: true })
+      .click();
+  await choose('Shot clock', shotClock);
+  await choose('Aiming guide', guide);
   const before = await network(page);
   await terms.getByRole('button', { name: 'Continue' }).click();
   // Nothing new may connect while the warning is up.
@@ -332,11 +338,26 @@ test('players whose clocks are wrong still find each other', async ({ browser })
   for (const side of [host, guest]) expect(side.errors).toEqual([]);
 });
 
-test('a shot clock that runs out passes the break, the same on both sides', async ({ browser }) => {
+test('the host’s terms hold on both sides: no aiming guide, and a shot clock that passes the break', async ({
+  browser,
+}) => {
   const host = await player(browser);
-  const link = await createLink(host.page, '30 s');
+  const link = await createLink(host.page, '30 s', 'Off');
   const guest = await player(browser, link);
   await joinAs(guest, host);
+  // Neither player can bring the guide back from the View menu, whatever their own setting.
+  for (const { page } of [host, guest]) {
+    await page
+      .getByRole('menubar', { name: 'Main menu' })
+      .getByRole('menuitem', { name: 'View', exact: true })
+      .click();
+    await expect(page.locator('.menu .menu-entry', { hasText: 'Aiming guide' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    );
+    await page.keyboard.press('Escape');
+    await expect(page.locator('.menu')).toHaveCount(0);
+  }
   // Ana's clock runs on both cards while she does nothing; her own game calls time after 30 s.
   for (const side of [host, guest]) {
     await expect(side.page.getByTestId('player-0')).toHaveClass(/active/);

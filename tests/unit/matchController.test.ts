@@ -23,6 +23,7 @@ const setup = (over: Partial<MatchSetup> = {}): MatchSetup => ({
   size: '9ft',
   race: 2,
   shotClock: 0,
+  guide: true,
   names: ['Ada', 'Bo'],
   seed: 'test-seed',
   firstBreak: 0,

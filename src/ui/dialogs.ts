@@ -126,8 +126,23 @@ export interface NewMatch {
   readonly size: TableSize;
   readonly race: number;
   readonly shotClock: number;
+  /** Whether the aiming guide is drawn. */
+  readonly guide: boolean;
   /** Who breaks the first rack; 'toss' for a coin toss. */
   readonly firstBreak: Seat | 'toss';
+}
+
+/** The choice of the aiming guide for a match, in the new match dialogs. */
+export function guideChoice(on: boolean, onChange: (on: boolean) => void): HTMLElement {
+  return segmented(
+    'Aiming guide',
+    [
+      ['on', 'On'],
+      ['off', 'Off'],
+    ] as const,
+    on ? 'on' : 'off',
+    (v) => onChange(v === 'on'),
+  ).element;
 }
 
 /** The terms of a new match for two players on this device; null when cancelled. */
@@ -140,6 +155,7 @@ export function newMatchDialog(settings: Settings): Promise<NewMatch | null> {
     let size = settings.table;
     let race = String(settings.race);
     let clock = String(settings.shotClock);
+    let guide = settings.matchGuide;
     let breaker: '0' | '1' | 'toss' = 'toss';
     const sizes = segmented(
       'Table',
@@ -174,6 +190,10 @@ export function newMatchDialog(settings: Settings): Promise<NewMatch | null> {
       choices('Table', sizes.element),
       choices('Race to (racks to win)', races.element),
       choices('Shot clock', clocks.element),
+      choices(
+        'Aiming guide (off: no lines show where the balls go)',
+        guideChoice(guide, (on) => (guide = on)),
+      ),
       choices('First break', breakers.element),
     );
     const actions = el('div', 'dialog-actions');
@@ -184,6 +204,7 @@ export function newMatchDialog(settings: Settings): Promise<NewMatch | null> {
           size,
           race: Number(race),
           shotClock: Number(clock),
+          guide,
           firstBreak: breaker === 'toss' ? 'toss' : breaker === '0' ? 0 : 1,
         }),
       ),

@@ -64,6 +64,9 @@ const FOUL_TEXT: Record<Foul, string> = {
 
 const GROUP_NAME = ['', 'solids', 'stripes'] as const;
 
+/** The note for a match played without the aiming guide. */
+const UNGUIDED = 'No aiming guide in this match: aim by eye';
+
 /** The game's version, as package.json gives it, for the About page. */
 const VERSION = '0.1.0';
 
@@ -374,6 +377,7 @@ export class UiRoot {
       size: s.table,
       race: 1,
       shotClock: 0,
+      guide: true,
       names: [s.name, s.name2],
       seed: randomSeed(),
       firstBreak: 0,
@@ -393,6 +397,7 @@ export class UiRoot {
       table: terms.size,
       race: terms.race,
       shotClock: terms.shotClock,
+      matchGuide: terms.guide,
     });
     const breaker: Seat =
       terms.firstBreak === 'toss'
@@ -405,6 +410,7 @@ export class UiRoot {
       size: terms.size,
       race: terms.race,
       shotClock: terms.shotClock,
+      guide: terms.guide,
       names: terms.names,
       seed: randomSeed(),
       firstBreak: breaker,
@@ -412,6 +418,7 @@ export class UiRoot {
     this.toasts.show(
       `${terms.firstBreak === 'toss' ? 'Coin toss: ' : ''}${terms.names[breaker]} breaks`,
     );
+    if (!terms.guide) this.toasts.show(UNGUIDED);
     return true;
   }
 
@@ -815,6 +822,7 @@ export class UiRoot {
           {
             label: '&Aiming guide',
             shortcut: 'G',
+            enabled: () => app.match.current.setup.guide,
             submenu: () =>
               choose('guide', [
                 ['long', 'Long'],
@@ -962,6 +970,10 @@ export class UiRoot {
         void this.shoot();
         break;
       case 'guide': {
+        if (!app.match.current.setup.guide) {
+          this.toasts.show(UNGUIDED);
+          break;
+        }
         const order = ['long', 'short', 'off'] as const;
         const next = order[(order.indexOf(app.settings.get().guide) + 1) % order.length]!;
         app.settings.update({ guide: next });

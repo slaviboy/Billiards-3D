@@ -220,6 +220,10 @@ export class AimGuide {
     return p;
   }
 
+  get visible(): boolean {
+    return this.group.visible;
+  }
+
   set visible(visible: boolean) {
     this.group.visible = visible;
   }

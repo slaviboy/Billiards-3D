@@ -52,6 +52,9 @@ export interface MatchSetup {
   readonly race: number;
   /** Seconds per shot; 0 for none. */
   readonly shotClock: number;
+  /** Whether the aiming guide is drawn, whatever each player's own setting: off, both players aim
+   * by eye. It changes nothing in the simulation or the rules. */
+  readonly guide: boolean;
   readonly names: readonly [string, string];
   /** Shared by both players: decides the racks. */
   readonly seed: string;

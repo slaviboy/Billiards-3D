@@ -36,7 +36,7 @@ Every message is a JSON object with a type `t`, at most 4096 bytes. The session'
 | Message | From | Meaning |
 |---|---|---|
 | `hello {v, build, name, token?}` | both | On every connection: the protocol version, the build (below), the player's name, and once the guest has one, its token. |
-| `setup {token, seed, race, shotClock, size, names, host, firstBreak}` | host | The match's terms and the guest's token. Sent when the guest first arrives and again on every return. |
+| `setup {token, seed, race, shotClock, guide, size, names, host, firstBreak}` | host | The match's terms and the guest's token. Sent when the guest first arrives and again on every return. |
 | `desync {n}` | both | After shot `n` the sender's table differs from the one the other reported (see below). |
 | `resign` | both | The sender gives up the match. |
 | `rematch` | both | The sender wants a rematch, or accepts the one offered. |
@@ -59,9 +59,12 @@ The **fingerprint** is 64-bit FNV-1a over every ball's position and state and th
 fingerprints mean equal tables, to the last bit (`MatchController.hash`).
 
 The **terms**: a 16-hex-digit seed (it decides every rack; a rematch derives the next seed from it,
-the same on both sides), the race (1–15 racks), the shot clock (0, or 10–300 s), the table (7 or
-9 ft), the two seats' names, the host's seat and who breaks first. The host's dialog offers what a
-match on one device offers; a coin toss is the host's.
+the same on both sides), the race (1–15 racks), the shot clock (0, or 10–300 s), whether the
+aiming guide is drawn, the table (7 or 9 ft), the two seats' names, the host's seat and who breaks
+first. The host's dialog offers what a match on one device offers; a coin toss is the host's.
+Without the guide, neither app draws it, whatever its player's own setting, so both aim by eye.
+It changes nothing in the simulation or the rules, so nothing on the wire checks it: an app built
+to show the guide anyway would play the same shots, just with help.
 
 The **build** is a fingerprint of the code both players must share (the simulation, the tables,
 the rules, the match and its messages, the envelope; `scripts/build-id.ts`). Two different builds

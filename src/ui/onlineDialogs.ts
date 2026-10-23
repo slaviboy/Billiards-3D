@@ -19,6 +19,7 @@ import type { OnlineState } from '../net/OnlineSession.ts';
 import { MAX_NAME_LENGTH, cleanName, inviteFromText, type Invite } from '../net/protocol.ts';
 import { TABLE_SIZES, type TableSize } from '../table/spec.ts';
 import { el, openDialog } from './Dialog.ts';
+import { guideChoice } from './dialogs.ts';
 import { segmented } from './modern/controls.ts';
 import { qrCode } from './qr.ts';
 
@@ -74,6 +75,8 @@ export interface OnlineTerms {
   readonly size: TableSize;
   readonly race: number;
   readonly shotClock: number;
+  /** Whether the aiming guide is drawn, for both players. */
+  readonly guide: boolean;
   /** Who breaks the first rack. */
   readonly firstBreak: 'toss' | 'host' | 'guest';
 }
@@ -85,6 +88,7 @@ export function onlineTermsDialog(settings: Settings): Promise<OnlineTerms | nul
     let size = settings.table;
     let race = String(settings.race);
     let clock = String(settings.shotClock);
+    let guide = settings.matchGuide;
     let breaker: OnlineTerms['firstBreak'] = 'toss';
     const sizes = segmented(
       'Table',
@@ -119,12 +123,16 @@ export function onlineTermsDialog(settings: Settings): Promise<OnlineTerms | nul
       choices('Table', sizes.element),
       choices('Race to (racks to win)', races.element),
       choices('Shot clock', clocks.element),
+      choices(
+        'Aiming guide, for you both (off: you aim by eye)',
+        guideChoice(guide, (on) => (guide = on)),
+      ),
       choices('First break', breakers.element),
     );
     const actions = el('div', 'dialog-actions');
     actions.append(
       button('Continue', () =>
-        close({ size, race: Number(race), shotClock: Number(clock), firstBreak: breaker }),
+        close({ size, race: Number(race), shotClock: Number(clock), guide, firstBreak: breaker }),
       ),
       button('Cancel', () => close(null), 'btn btn-quiet'),
     );

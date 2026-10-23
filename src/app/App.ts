@@ -128,6 +128,7 @@ export class App {
       size: s.table,
       race: 1,
       shotClock: 0,
+      guide: true,
       names: [s.name, s.name2],
       seed: 'welcome',
       firstBreak: 0,
@@ -406,7 +407,12 @@ export class App {
   private updateGuide(): void {
     const state = this.match.current;
     const cue = state.balls[0]!;
-    const show = this.canAct() && cue.s !== Motion.Pocketed && this.settings.get().guide !== 'off';
+    // A match played without the guide hides it from both players, whatever their own setting.
+    const show =
+      this.canAct() &&
+      cue.s !== Motion.Pocketed &&
+      state.setup.guide &&
+      this.settings.get().guide !== 'off';
     this.guide.visible = show;
     if (!show) return;
     const { W, L } = this.match.table.spec;

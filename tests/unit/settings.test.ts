@@ -114,6 +114,18 @@ describe('aiming at the point a finger touches', () => {
   });
 });
 
+describe('the aiming guide in a new match', () => {
+  it('is on unless chosen, and a match chosen without it is remembered for the next', () => {
+    expect(loadSettings(storage(), DEFAULT_SETTINGS).matchGuide).toBe(true);
+    expect(loadSettings(storage(), PHONE_SETTINGS).matchGuide).toBe(true);
+    const saved = storage();
+    saveSettings({ ...DEFAULT_SETTINGS, matchGuide: false }, saved);
+    expect(loadSettings(saved, DEFAULT_SETTINGS).matchGuide).toBe(false);
+    const damaged = storage({ 'pool.settings.v2': JSON.stringify({ matchGuide: 'off' }) });
+    expect(loadSettings(damaged, DEFAULT_SETTINGS).matchGuide).toBe(true);
+  });
+});
+
 describe('the hints on hover', () => {
   it('are off by default on every device, and stay on once turned on', () => {
     expect(loadSettings(storage(), DEFAULT_SETTINGS).hints).toBe(false);

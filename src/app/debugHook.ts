@@ -50,6 +50,8 @@ export interface PoolDebug {
     groups: readonly number[];
   };
   aim(): { heading: number; power: number; a: number; b: number; elevation: number };
+  /** Whether the aiming guide is drawn on the cloth. */
+  guideShown(): boolean;
   /**
    * Sets up a rack in play for a test: the players' groups, whose turn it is, and which balls are
    * still on the table (the rest go to the first pocket).
@@ -108,6 +110,7 @@ export function installDebugHook(app: App, ui: UiRoot): void {
       };
     },
     aim: () => ({ ...app.aim }),
+    guideShown: () => app.guide.visible,
     arrange({ groups, turn, onTable }) {
       const s = app.match.current;
       const pocket = app.match.table.pockets[0]!.center;

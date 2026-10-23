@@ -59,6 +59,8 @@ export interface Settings {
   readonly table: TableSize;
   readonly race: number;
   readonly shotClock: number;
+  /** Whether a new match draws the aiming guide (off, both players aim by eye). */
+  readonly matchGuide: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -80,6 +82,7 @@ export const DEFAULT_SETTINGS: Settings = {
   table: '9ft',
   race: 3,
   shotClock: 0,
+  matchGuide: true,
 };
 
 export const PHONE_SETTINGS: Settings = { ...DEFAULT_SETTINGS, largeCards: false, menuBar: false };
@@ -125,6 +128,7 @@ export function sanitize(value: unknown, d: Settings = DEFAULT_SETTINGS): Settin
     table: isTableSize(v.table) ? v.table : d.table,
     race: oneOf(v.race, RACES, d.race),
     shotClock: oneOf(v.shotClock, SHOT_CLOCKS, d.shotClock),
+    matchGuide: typeof v.matchGuide === 'boolean' ? v.matchGuide : d.matchGuide,
   };
 }
 

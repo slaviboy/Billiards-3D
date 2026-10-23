@@ -47,7 +47,9 @@ Choose **Practice** to play alone with no rules, **Two players** for a match on 
 a friend online** to invite someone, or **Join a game** to open a link you were sent. On a tablet
 or a computer the menu bar along the top (Game, View, Options, Help) holds all of these, the view
 and the settings; on a phone they are behind the menu button, or Settings can show the bar there
-too. Escape opens the pause menu everywhere.
+too. Escape opens the pause menu everywhere. A match can be played without the aiming guide, the
+lines that show where the balls go: chosen when the match is set up, it holds for both players
+(online, the host's choice), who then aim by eye.
 
 - **Aim** by dragging on the cloth (a finger points the cue from the cue ball at where it touches,
   or, with "Aim from the cue ball at the point a finger touches" off in Settings, turns the aim as

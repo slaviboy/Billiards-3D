@@ -41,6 +41,7 @@ const terms: PoolTerms = {
   seed: '00112233aabbccdd',
   race: 3,
   shotClock: 30,
+  guide: true,
   size: '9ft',
   names: ['Ana', 'Ben'],
   host: 0,
@@ -184,6 +185,18 @@ describe('the host’s terms', () => {
     expect(parseTerms({ ...terms, names: [' Ana‮ ', ''] })?.names).toEqual(['Ana', 'Player 2']);
   });
 
+  it('carry a match without the aiming guide to the guest’s match too', () => {
+    const unguided = { ...terms, guide: false };
+    expect(arrive(setupMessage(SAMPLE_ID, unguided))).toEqual({
+      t: 'setup',
+      token: SAMPLE_ID,
+      terms: unguided,
+    });
+    expect(setupFor(unguided).guide).toBe(false);
+    expect(setupFor(terms).guide).toBe(true);
+    expect(rematchTerms(unguided).guide).toBe(false);
+  });
+
   it('refuse anything outside what a match can be', () => {
     for (const patch of [
       { seed: 'welcome' },
@@ -193,6 +206,9 @@ describe('the host’s terms', () => {
       { race: 2.5 },
       { shotClock: 5 },
       { shotClock: 301 },
+      { guide: 'off' },
+      { guide: 0 },
+      { guide: null },
       { size: '8ft' },
       { names: ['Ana'] },
       { names: ['Ana', 7] },

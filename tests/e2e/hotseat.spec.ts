@@ -70,6 +70,39 @@ test('a match on this device, from the menu to the second rack', async ({ page }
   await expect(page.getByTestId('status')).toContainText('Bo to break');
 });
 
+test('a match without the aiming guide hides it, whatever the player’s own setting', async ({
+  page,
+}) => {
+  const shown = () => page.evaluate(() => window.__poolDebug!.guideShown());
+  const note = page.locator('.toast', { hasText: 'No aiming guide in this match' });
+  await page.locator('.mode-card[data-mode="local"]').click();
+  await page
+    .getByRole('radiogroup', { name: 'Aiming guide' })
+    .getByRole('radio', { name: 'Off', exact: true })
+    .click();
+  await page.getByRole('button', { name: 'Start' }).click();
+  await expect(page.getByTestId('status')).toContainText('to break');
+  await expect(note.first()).toBeAttached();
+  expect(await shown()).toBe(false);
+  // The G key, which steps through the player's own setting, cannot bring it back.
+  await page.keyboard.press('g');
+  await expect(page.locator('.toast', { hasText: /^Aiming guide: / })).toHaveCount(0);
+  expect(await shown()).toBe(false);
+
+  // The next match remembers the choice; turned back on, the guide is drawn again.
+  await page.keyboard.press('Escape');
+  await page.locator('.pause-item[data-choice="newGame"]').click();
+  const guide = page.getByRole('radiogroup', { name: 'Aiming guide' });
+  await expect(guide.getByRole('radio', { name: 'Off', exact: true })).toHaveAttribute(
+    'aria-checked',
+    'true',
+  );
+  await guide.getByRole('radio', { name: 'On', exact: true }).click();
+  await page.getByRole('button', { name: 'Start' }).click();
+  await expect(page.getByTestId('status')).toContainText('to break');
+  await expect.poll(() => page.evaluate(() => window.__poolDebug!.guideShown())).toBe(true);
+});
+
 test('the 8 waits for a called pocket, and a marker over each pocket calls it', async ({
   page,
 }) => {

@@ -25,6 +25,7 @@ const setup: MatchSetup = {
   size: '9ft',
   race: 3,
   shotClock: 30,
+  guide: true,
   names: ['Ana', 'Ben'],
   seed: 'actions',
   firstBreak: 1,
