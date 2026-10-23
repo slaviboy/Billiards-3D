@@ -221,7 +221,7 @@ test('two players connect from a link, play the break and a shot, and agree on t
 
   // Ana breaks at full power, from the keyboard.
   await unfocus(host.page);
-  for (let i = 0; i < 12; i++) await host.page.keyboard.press('Shift+ArrowUp');
+  for (let i = 0; i < 20; i++) await host.page.keyboard.press('Shift+ArrowUp');
   await expect(host.page.getByTestId('power')).toContainText('100%');
   // Ben sees Ana's cue as she sets it up: her power reaches his screen through the previews.
   await expect(guest.page.getByTestId('power')).toContainText('100%', { timeout: 10_000 });
@@ -250,6 +250,8 @@ test('two players connect from a link, play the break and a shot, and agree on t
   await watcher.page.keyboard.press('Space');
   await unfocus(shooter.page);
   for (let i = 0; i < 4; i++) await shooter.page.keyboard.press('Shift+ArrowLeft');
+  // Each shot starts from no power: some first, then Space.
+  for (let i = 0; i < 8; i++) await shooter.page.keyboard.press('Shift+ArrowUp');
   await shooter.page.keyboard.press('Space');
   await agree(host, guest, 2);
 

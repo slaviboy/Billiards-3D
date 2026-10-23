@@ -11,7 +11,8 @@
 
 // The camera and the aim with the mouse and the keyboard, as on the chess board: a rail's corner
 // turns the view, a rail's side pans it, the wheel zooms, Home brings it back, T switches to the
-// top view; the cloth aims; none of it touches the game.
+// top view; the cloth aims; none of it touches the game. Each shot starts from no power, and a pull
+// taken back to the start of the power bar shoots nothing.
 
 import { expect, test, type Page } from '@playwright/test';
 
@@ -241,4 +242,48 @@ test('the shortcuts list opens with ? and lists the camera keys', async ({ page 
   }
   await page.keyboard.press('Escape');
   await expect(dialog).toBeHidden();
+});
+
+test('each shot starts from no power, and a pull taken back to the start shoots nothing', async ({
+  page,
+}) => {
+  const power = page.getByTestId('power');
+  const state = () =>
+    page.evaluate(() => ({
+      power: window.__poolDebug!.aim().power,
+      shot: window.__poolDebug!.match().shot,
+    }));
+  expect(await state()).toEqual({ power: 0, shot: 0 });
+  await expect(power).toHaveClass(/idle/);
+  await expect(power).toContainText('Pull');
+
+  // Space alone shoots nothing, and says how to set the power.
+  await page.keyboard.press('Space');
+  await expect(page.locator('.toast', { hasText: 'Pull the power bar down' })).toBeVisible();
+  expect((await state()).shot).toBe(0);
+
+  // A pull, then back to the start: the bar says so, and letting go there shoots nothing.
+  const track = (await page.locator('.power-track').boundingBox())!;
+  const x = track.x + track.width / 2;
+  await page.mouse.move(x, track.y + 2);
+  await page.mouse.down();
+  await page.mouse.move(x, track.y + track.height * 0.7, { steps: 8 });
+  expect((await state()).power).toBeCloseTo(0.7, 1);
+  await expect(power).not.toHaveClass(/cancelling/);
+  await page.mouse.move(x, track.y + 2, { steps: 8 });
+  await expect(power).toHaveClass(/cancelling/);
+  await expect(power).toContainText('Cancel');
+  await page.mouse.up();
+  await expect(power).toHaveClass(/idle/);
+  expect(await state()).toEqual({ power: 0, shot: 0 });
+
+  // A pull let go further down shoots, and the next shot starts from no power again.
+  await page.evaluate(() => window.__poolDebug!.setPlaybackSpeed(8));
+  await page.mouse.move(x, track.y + 2);
+  await page.mouse.down();
+  await page.mouse.move(x, track.y + track.height * 0.4, { steps: 8 });
+  await page.mouse.up();
+  await expect.poll(async () => (await state()).shot, { timeout: 20000 }).toBe(1);
+  await expect(power).toHaveClass(/idle/, { timeout: 20000 });
+  expect((await state()).power).toBe(0);
 });

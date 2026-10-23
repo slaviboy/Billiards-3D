@@ -12,12 +12,14 @@
 // The controls for the shot itself:
 //
 //   PowerBar   a bar along the screen's edge: press and pull down to draw the cue back, let go to
-//              shoot. Back at the top, letting go takes nothing.
+//              shoot. Each shot starts from no power, the bar showing which way to pull; back at
+//              its start, letting go takes nothing, so a pull can be stopped to aim again.
 //   SpinPad    the cue ball's face, with the cue tip's point on it: drag the point for top, draw
 //              and side; a double click centres it. The cue's elevation sits beside it.
 //   FineAim    a ridged wheel: drag it sideways to turn the aim by small steps.
 
 import { el } from '../Dialog.ts';
+import { LINE_ICONS } from '../icons.ts';
 
 /** Keeps a drag's pointer on the control even when it leaves it (a pointer already gone is not). */
 function capture(element: Element, pointerId: number): void {
@@ -31,6 +33,12 @@ function capture(element: Element, pointerId: number): void {
 /** How far from the centre the tip may strike, in ball radii (beyond it the cue miscues). */
 export const MAX_TIP = 0.5;
 export const MAX_ELEVATION = 30;
+
+/**
+ * The start of the power bar, as a part of the pull: letting go above it shoots nothing and puts
+ * the cue back, the way to stop a pull and aim again. Below it the keys do not shoot either.
+ */
+export const CANCEL_PULL = 0.06;
 
 /** The power's colours from none to full: mint, lime, gold, coral, red. */
 const POWER_STOPS: readonly (readonly [at: number, rgb: readonly [number, number, number]])[] = [
@@ -90,7 +98,15 @@ export class PowerBar {
     this.track.tabIndex = 0;
     this.fill = el('div', 'power-fill');
     const cue = el('div', 'power-cue');
-    this.track.append(this.fill, cue);
+    // The start of the bar, where letting go shoots nothing; and, while there is no pull, chevrons
+    // running down it to show which way to pull.
+    const cancel = el('div', 'power-cancel');
+    cancel.innerHTML = LINE_ICONS.close;
+    const hint = el('div', 'power-hint');
+    hint.innerHTML = LINE_ICONS.chevronDown.repeat(3);
+    hint.setAttribute('aria-hidden', 'true');
+    this.track.style.setProperty('--cancel', String(CANCEL_PULL));
+    this.track.append(this.fill, cancel, hint, cue);
     this.element.append(label, this.track, this.value);
     this.track.addEventListener('pointerdown', this.onDown);
     this.track.addEventListener('pointermove', this.onMove);
@@ -130,7 +146,7 @@ export class PowerBar {
     this.drag = null;
     this.element.classList.remove('pulling');
     const power = this.at(event.clientY);
-    if (power < 0.03 || !this.handlers.canShoot()) this.handlers.cancel(drag.previous);
+    if (power < CANCEL_PULL || !this.handlers.canShoot()) this.handlers.cancel(drag.previous);
     else this.handlers.release(power);
     this.render();
   };
@@ -158,12 +174,19 @@ export class PowerBar {
   render(): void {
     const power = this.handlers.power();
     const percent = Math.round(power * 100);
+    const canShoot = this.handlers.canShoot();
+    // Ready with no pull yet: "Pull". Pulled back to the start: letting go cancels.
+    const idle = canShoot && !this.drag && power < CANCEL_PULL;
+    const cancelling = this.drag !== null && power < CANCEL_PULL;
     this.fill.style.height = `${percent}%`;
     this.element.style.setProperty('--power', String(power));
     this.element.style.setProperty('--power-color', powerColor(power));
-    this.value.textContent = `${percent}%`;
+    this.value.textContent = idle ? 'Pull' : cancelling ? 'Cancel' : `${percent}%`;
     this.track.setAttribute('aria-valuenow', String(percent));
-    this.element.classList.toggle('disabled', !this.handlers.canShoot());
+    this.track.setAttribute('aria-valuetext', this.value.textContent);
+    this.element.classList.toggle('idle', idle);
+    this.element.classList.toggle('cancelling', cancelling);
+    this.element.classList.toggle('disabled', !canShoot);
   }
 }
 

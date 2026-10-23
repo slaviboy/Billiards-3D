@@ -354,6 +354,100 @@
     text-shadow: 0 0 0.8rem var(--power-color, transparent);
   }
 
+  /* Each shot starts from no power. Until the pull, chevrons run down the bar, the grip nudges
+   * down and the figure reads "Pull". */
+  .power-hint {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 16%;
+    display: grid;
+    justify-items: center;
+    color: var(--power-color, var(--m-gold));
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+  }
+
+  .power-hint svg {
+    width: 1.7rem;
+    height: 1.7rem;
+    margin-top: -0.7rem;
+    animation: power-hint 1.4s ease-in-out infinite;
+  }
+
+  .power-hint svg:nth-child(2) {
+    animation-delay: 0.16s;
+  }
+
+  .power-hint svg:nth-child(3) {
+    animation-delay: 0.32s;
+  }
+
+  .power.idle .power-hint {
+    opacity: 1;
+  }
+
+  .power.idle .power-cue {
+    animation: power-nudge 1.4s ease-in-out infinite;
+  }
+
+  .power.idle .power-value {
+    color: var(--m-gold-hi);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  /* The start of the bar, where letting go takes no shot: marked while pulling, red with the pull
+   * in it, so a pull can be stopped there to aim again. */
+  .power-cancel {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    z-index: 1;
+    height: calc(var(--cancel, 0.06) * 100%);
+    display: grid;
+    place-items: end center;
+    padding-bottom: 0.15rem;
+    border-bottom: 1px dashed rgba(255, 255, 255, 0.3);
+    background: rgba(255, 255, 255, 0.07);
+    color: rgba(255, 255, 255, 0.6);
+    opacity: 0;
+    pointer-events: none;
+    transition:
+      opacity 0.15s,
+      background 0.15s,
+      color 0.15s;
+  }
+
+  .power-cancel svg {
+    width: 1.1rem;
+    height: 1.1rem;
+  }
+
+  .power.pulling .power-cancel {
+    opacity: 1;
+  }
+
+  .power.cancelling .power-cancel {
+    border-color: rgba(229, 115, 107, 0.9);
+    background: rgba(229, 115, 107, 0.4);
+    color: #fff;
+  }
+
+  .power.cancelling .power-value {
+    color: var(--m-danger);
+    text-shadow: none;
+  }
+
+  .power.pulling.cancelling .power-track {
+    box-shadow:
+      inset 0 0.25rem 0.6rem rgba(0, 0, 0, 0.65),
+      inset 0 0 0 1px rgba(229, 115, 107, 0.5),
+      0 0 1.6rem rgba(229, 115, 107, 0.45);
+  }
+
   .power.disabled {
     opacity: 0.5;
   }
@@ -1525,5 +1619,32 @@
 @keyframes pocket-pulse {
   50% {
     box-shadow: 0 0 0 0.6rem rgba(214, 179, 106, 0.18);
+  }
+}
+
+/* The power bar's chevrons run down it, one after another, until the pull. */
+@keyframes power-hint {
+  0%,
+  100% {
+    opacity: 0.12;
+    transform: translateY(-0.25rem);
+  }
+
+  50% {
+    opacity: 1;
+    transform: translateY(0.35rem);
+  }
+}
+
+/* The grip nudges down, the way to pull it. */
+@keyframes power-nudge {
+  0%,
+  60%,
+  100% {
+    transform: translate(-50%, 0);
+  }
+
+  30% {
+    transform: translate(-50%, 0.6rem);
   }
 }

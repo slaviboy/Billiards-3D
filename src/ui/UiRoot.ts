@@ -40,7 +40,7 @@ import { iconButton } from './modern/controls.ts';
 import { MenuBar, type Menu, type MenuItem } from './modern/MenuBar.ts';
 import { PlayerCard } from './modern/PlayerCard.ts';
 import { PocketPicker } from './modern/PocketPicker.ts';
-import { FineAim, MAX_TIP, PowerBar, SpinPad } from './modern/ShotControls.ts';
+import { CANCEL_PULL, FineAim, MAX_TIP, PowerBar, SpinPad } from './modern/ShotControls.ts';
 import { Toasts } from './modern/Toasts.ts';
 
 const FOUL_TEXT: Record<Foul, string> = {
@@ -446,6 +446,12 @@ export class UiRoot {
     if (app.match.needsCall() && app.calledPocket === null) {
       app.setPull(0);
       this.toasts.show('Call a pocket for the 8 first: tap one of the pockets');
+      this.render();
+      return;
+    }
+    // Each shot starts from no power: Space alone, before any is set, does not shoot.
+    if (app.aim.power < CANCEL_PULL) {
+      this.toasts.show('Pull the power bar down and let go (or Shift + ↑, then Space)');
       this.render();
       return;
     }

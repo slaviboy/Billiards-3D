@@ -36,7 +36,7 @@ test('a match on this device, from the menu to the second rack', async ({ page }
 
   // Full power with the keyboard, then Space: the break.
   await page.evaluate(() => window.__poolDebug!.setPlaybackSpeed(8));
-  for (let i = 0; i < 12; i++) await page.keyboard.press('Shift+ArrowUp');
+  for (let i = 0; i < 20; i++) await page.keyboard.press('Shift+ArrowUp');
   await expect(page.getByTestId('power')).toContainText('100%');
   await page.keyboard.press('Space');
   await expect.poll(async () => (await match(page)).shot, { timeout: 20000 }).toBe(1);
@@ -99,6 +99,8 @@ test('the 8 waits for a called pocket, and a marker over each pocket calls it', 
   await expect(marks.nth(3)).toHaveAttribute('aria-pressed', 'true');
   await expect(status).toContainText('pocket called');
   await page.evaluate(() => window.__poolDebug!.setPlaybackSpeed(8));
+  // Each shot starts from no power: set some, then Space.
+  for (let i = 0; i < 8; i++) await page.keyboard.press('Shift+ArrowUp');
   await page.keyboard.press('Space');
   await expect
     .poll(async () => (await page.evaluate(() => window.__poolDebug!.match())).shot, {

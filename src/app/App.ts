@@ -77,7 +77,8 @@ export class App {
   readonly input: TableInput;
   readonly sound: SoundManager;
   readonly ready: Promise<void>;
-  aim: Aim = { heading: Math.PI / 2, power: 0.45, a: 0, b: 0, elevation: 3 };
+  /** The power is none until the player draws the cue back; it is none again after each shot. */
+  aim: Aim = { heading: Math.PI / 2, power: 0, a: 0, b: 0, elevation: 3 };
   calledPocket: PocketId | null = null;
   safety = false;
   /** Seats played on this device: both on one device, one online. */
@@ -214,6 +215,7 @@ export class App {
   async newMatch(setup: MatchSetup, localSeats: readonly Seat[] = [0, 1]): Promise<void> {
     this.player.finish();
     this.localSeats = localSeats;
+    this.aim.power = 0;
     this.match.start(setup);
     await this.showMatch();
     this.sound.racked();
@@ -346,6 +348,7 @@ export class App {
       this.cue.visible = false;
       this.guide.visible = false;
       this.pull = 0;
+      this.aim.power = 0;
       this.calledPocket = null;
       this.safety = false;
       await this.player.play(result.timeline);
