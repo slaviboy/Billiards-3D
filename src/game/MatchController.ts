@@ -81,9 +81,30 @@ export interface ShotResult {
   readonly state: MatchState;
 }
 
+/**
+ * Something a player did to the match, as it was done: online, the actions of the player at this
+ * device are what the other player is sent. `seat` is who acted, `n` the shot index it came at.
+ */
+export type MatchAction =
+  | {
+      readonly kind: 'shot';
+      readonly seat: Seat;
+      readonly n: number;
+      readonly code: ShotCode;
+      readonly intent: Intent;
+      readonly placement: Placement | null;
+      /** The fingerprint of the table the shot led to. */
+      readonly hash: string;
+      /** How long the shot's balls move, in seconds of simulated time. */
+      readonly duration: number;
+    }
+  | { readonly kind: 'decide'; readonly seat: Seat; readonly n: number; readonly choice: Choice }
+  | { readonly kind: 'timeout'; readonly seat: Seat; readonly n: number };
+
 export class MatchController {
   readonly state: Store<MatchState>;
   table: TableGeometry;
+  private readonly actionListeners = new Set<(action: MatchAction) => void>();
 
   constructor(setup: MatchSetup) {
     this.table = buildTable(tableSpec(setup.size));
@@ -188,6 +209,7 @@ export class MatchController {
         ruling: null,
       };
       this.state.set(state);
+      this.shot(before, state, code, intent, placement, timeline);
       return { timeline, facts, ruling: null, state };
     }
 
@@ -199,7 +221,57 @@ export class MatchController {
     let state: MatchState = { ...before, rack, balls: finalBalls, shot: before.shot + 1, ruling };
     if (rack.phase === 'over') state = this.scoreRack(state);
     this.state.set(state);
+    this.shot(before, state, code, intent, placement, timeline);
     return { timeline, facts, ruling, state };
+  }
+
+  /** Hears every shot, decision and time-out as it is made; returns an unsubscribe. */
+  onAction(listener: (action: MatchAction) => void): () => void {
+    this.actionListeners.add(listener);
+    return () => this.actionListeners.delete(listener);
+  }
+
+  private shot(
+    before: MatchState,
+    after: MatchState,
+    code: ShotCode,
+    intent: Intent,
+    placement: Placement | null,
+    timeline: Timeline,
+  ): void {
+    this.emit({
+      kind: 'shot',
+      seat: before.rack.turn,
+      n: before.shot,
+      code,
+      intent,
+      placement,
+      hash: this.hash(after),
+      duration: timeline.duration,
+    });
+  }
+
+  private emit(action: MatchAction): void {
+    for (const listener of this.actionListeners) {
+      // A listener's trouble must not undo a shot that has been committed.
+      try {
+        listener(action);
+      } catch (error) {
+        console.error(error);
+      }
+    }
+  }
+
+  /**
+   * Ends the match in `winner`'s favour whatever the score: online, the other player resigned,
+   * left, or broke the rules. A rack still being played ends as conceded.
+   */
+  award(winner: Seat): void {
+    const before = this.current;
+    if (before.winner !== null) return;
+    const rack =
+      before.rack.phase === 'over' ? before.rack : concedeRack(before.rack, other(winner));
+    this.state.set({ ...before, rack, winner, ruling: null });
   }
 
   /** Puts a pocketed cue ball back in hand at a free spot for the incoming player to move. */
@@ -233,6 +305,7 @@ export class MatchController {
       balls = this.cueBallInHand(balls, decided.state.inHand);
     }
     this.state.set({ ...before, rack: decided.state, balls, ruling: null });
+    this.emit({ kind: 'decide', seat: before.rack.turn, n: before.shot, choice });
   }
 
   private spotEight(balls: BallState[]): BallState[] {
@@ -287,6 +360,7 @@ export class MatchController {
         spotEight: false,
       },
     });
+    this.emit({ kind: 'timeout', seat: before.rack.turn, n: before.shot });
   }
 
   /** A player concedes the rack (WPA 1.12). */

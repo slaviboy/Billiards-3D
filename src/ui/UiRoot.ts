@@ -32,6 +32,7 @@ import {
   settingsDialog,
 } from './dialogs.ts';
 import { LINE_ICONS } from './icons.ts';
+import type { OnlineHooks } from './online/hooks.ts';
 import { iconButton } from './modern/controls.ts';
 import { PlayerCard } from './modern/PlayerCard.ts';
 import { PocketPicker } from './modern/PocketPicker.ts';
@@ -74,6 +75,9 @@ export class UiRoot {
   private clock = { key: '', used: 0 };
   private lastTick = performance.now();
   private busyMenu = false;
+  /** Online play, where it goes differently (src/ui/online/OnlinePlay.ts sets it). */
+  online: OnlineHooks | null = null;
+  private deciding = false;
 
   constructor(private readonly app: App) {
     document.documentElement.dataset.ui = 'modern';
@@ -214,11 +218,17 @@ export class UiRoot {
     if (this.busyMenu) return;
     this.busyMenu = true;
     try {
+      if (await this.online?.intercept()) return;
       for (;;) {
         const choice = await mainMenu();
         if (choice === 'practice') return await this.startPractice();
         if (choice === 'local') {
           if (await this.startLocal()) return;
+          continue;
+        }
+        if (choice === 'online' || choice === 'join') {
+          const online = this.online;
+          if (online && (await (choice === 'online' ? online.host() : online.join()))) return;
           continue;
         }
         if (choice === 'settings') await settingsDialog(this.app.settings);
@@ -232,6 +242,7 @@ export class UiRoot {
   }
 
   private async startPractice(): Promise<void> {
+    if (!(await this.leavesOnline())) return;
     const s = this.app.settings.get();
     await this.app.newMatch({
       mode: 'practice',
@@ -248,6 +259,7 @@ export class UiRoot {
 
   /** Asks for the terms and starts a match on this device; false if cancelled. */
   private async startLocal(): Promise<boolean> {
+    if (!(await this.leavesOnline())) return false;
     const terms = await newMatchDialog(this.app.settings.get());
     if (!terms) return false;
     this.app.settings.update({
@@ -284,13 +296,45 @@ export class UiRoot {
     await this.app.newMatch(setup);
   }
 
+  // --- for online play (src/ui/online) ---------------------------------------------------------
+
+  /** Starts a match with this device playing `seats` (online: one). */
+  async beginMatch(setup: MatchSetup, seats: readonly Seat[]): Promise<void> {
+    this.toasts.clear();
+    this.clock = { key: '', used: 0 };
+    this.app.remoteCue = false;
+    await this.app.newMatch(setup, seats);
+  }
+
+  /** A note under the cards. */
+  say(text: string, kind: 'info' | 'foul' | 'good' = 'info'): void {
+    this.toasts.show(text, kind);
+  }
+
+  playerCard(seat: Seat): PlayerCard {
+    return this.cards[seat];
+  }
+
+  /** Whatever the rules ask of this device next, after the table was replaced (a decision). */
+  async followUp(): Promise<void> {
+    this.render();
+    if (this.app.match.current.rack.phase === 'decision') await this.decide();
+  }
+
+  /** Before a match on this device replaces an online one: leaves it, unless the player stays. */
+  private async leavesOnline(): Promise<boolean> {
+    return !this.online || (await this.online.leaveForNewMatch());
+  }
+
   /** The pause menu. */
   async pause(): Promise<void> {
     if (dialogOpen()) return;
     const state = this.app.match.current;
+    const online = state.setup.mode === 'online' && (this.online?.active ?? false);
     const choice = await pauseMenu({
       canConcede:
         state.setup.mode === 'local' && state.winner === null && state.rack.phase !== 'over',
+      ...(online ? { online: { canResign: state.winner === null } } : {}),
     });
     switch (choice) {
       case 'newGame':
@@ -313,6 +357,12 @@ export class UiRoot {
         break;
       case 'menu':
         await this.menu();
+        break;
+      case 'resign':
+        await this.online?.resign();
+        break;
+      case 'leave':
+        await this.online?.leave();
         break;
       default:
         break;
@@ -362,9 +412,21 @@ export class UiRoot {
     const state = this.app.match.current;
     const kind = state.rack.decision;
     if (!kind) return;
-    const choice = await decisionDialog(kind, state.setup.names[state.rack.turn], CHOICES[kind]);
-    this.app.match.decide(choice);
-    if (choice !== 'accept' && choice !== 'spot') this.app.sound.racked();
+    // Online, the other player decides on their own device; their choice arrives as a message.
+    const mine = this.online?.seat ?? null;
+    if (state.setup.mode === 'online' && mine !== null && state.rack.turn !== mine) return;
+    if (this.deciding) return;
+    this.deciding = true;
+    try {
+      const choice = await decisionDialog(kind, state.setup.names[state.rack.turn], CHOICES[kind]);
+      // Online, the table may have changed meanwhile (the host's taken, or time called).
+      const now = this.app.match.current.rack;
+      if (now.phase !== 'decision' || now.decision !== kind || now.turn !== state.rack.turn) return;
+      this.app.match.decide(choice);
+      if (choice !== 'accept' && choice !== 'spot') this.app.sound.racked();
+    } finally {
+      this.deciding = false;
+    }
     this.app.showBalls();
     this.app.aimAtRack();
     this.render();
@@ -403,6 +465,8 @@ export class UiRoot {
   private async continueMatch(): Promise<void> {
     const state = this.app.match.current;
     if (state.winner !== null) {
+      // Online, both players must ask; the session starts it on both sides.
+      if (state.setup.mode === 'online' && this.online) return this.online.rematch();
       const setup = state.setup;
       const firstBreak = other(setup.firstBreak);
       await this.startMatch({ ...setup, seed: randomSeed(), firstBreak });
@@ -410,6 +474,8 @@ export class UiRoot {
       return;
     }
     if (state.rack.phase !== 'over') return;
+    // Online, the next rack starts by itself on both sides at once (src/game/GamePort.ts).
+    if (state.setup.mode === 'online' && this.online) return;
     this.app.match.nextRack();
     this.app.sound.racked();
     this.app.showBalls();
@@ -522,7 +588,9 @@ export class UiRoot {
     this.lastTick = now;
     const state = this.app.match.current;
     const limit = state.setup.shotClock;
-    if (limit <= 0 || !this.app.canAct()) {
+    // Online, both clocks are kept by the game's port (src/game/GamePort.ts), alike on both sides.
+    const online = state.setup.mode === 'online' && this.online !== null;
+    if (limit <= 0 || online || !this.app.canAct()) {
       this.renderClock(state);
       return;
     }
@@ -544,12 +612,17 @@ export class UiRoot {
   private renderClock(state: MatchState): void {
     const limit = state.setup.shotClock;
     const timing = limit > 0 && this.app.canAct(state);
+    // Online, the clocks the game's port keeps (the other player's with the network's allowance).
+    const online = state.setup.mode === 'online' ? this.online : null;
     for (const seat of [0, 1] as const) {
-      const active = timing && state.rack.turn === seat;
+      const kept = online && limit > 0 ? online.clockFor(seat) : null;
+      const active = online ? kept !== null : timing && state.rack.turn === seat;
+      const used = kept ? kept.used : this.clock.used;
+      const allowed = kept ? kept.limit : limit;
       this.cards[seat].render({
         ...this.cardView(state, seat),
-        clock: active ? Math.max(0, 1 - this.clock.used / limit) : null,
-        seconds: active ? Math.ceil(limit - this.clock.used) : null,
+        clock: active ? Math.max(0, 1 - used / allowed) : null,
+        seconds: active ? Math.ceil(Math.max(0, allowed - used)) : null,
       });
     }
   }
