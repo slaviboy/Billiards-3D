@@ -758,6 +758,12 @@
     right: var(--edge-right);
   }
 
+  /* The dock stays in the middle, narrowed alike on both sides so as not to reach under the
+   * cards (on a narrow screen it may, at its least width; the cards then end above it). */
+  .pool-ui.large-cards .hud-dock {
+    width: min(64rem, max(36rem, calc(100vw - 2 * (var(--edge-left) + var(--side) + 0.8rem))));
+  }
+
   .pool-ui.large-cards .toasts {
     left: calc(50% + (var(--side) + 0.8rem) / 2);
   }
@@ -1064,6 +1070,10 @@
 
     .pool-ui.large-cards.menu-bar .race {
       display: none;
+    }
+
+    .pool-ui.large-cards .hud-dock {
+      width: min(64rem, calc(100vw - 1.6rem));
     }
 
     .pool-ui.large-cards .toasts,
