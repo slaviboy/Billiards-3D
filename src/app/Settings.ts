@@ -11,7 +11,8 @@
 
 // The player's preferences, kept in this browser. Whatever is stored is checked field by field
 // against the defaults, so a damaged or older entry never breaks the game; storage that is blocked
-// simply means the defaults.
+// simply means the defaults. A tablet or a computer starts with large cards, a phone with small
+// ones in the top bar, which leave its small screen to the table.
 
 import { CLOTHS, type ClothName } from '../scene/surfaces.ts';
 import type { ViewMode } from '../scene/CameraRig.ts';
@@ -57,13 +58,22 @@ export const DEFAULT_SETTINGS: Settings = {
   cloth: 'blueGreen',
   leftHanded: false,
   keepZoom: true,
-  largeCards: false,
+  largeCards: true,
   name: 'Player 1',
   name2: 'Player 2',
   table: '9ft',
   race: 3,
   shotClock: 0,
 };
+
+export const PHONE_SETTINGS: Settings = { ...DEFAULT_SETTINGS, largeCards: false };
+
+/** The defaults for this device: a phone's screen is under 600 CSS pixels on its shorter side
+ * (most are 360 to 430), a tablet's or a computer's larger. */
+export function deviceDefaults(): Settings {
+  const s = typeof screen === 'undefined' ? null : screen;
+  return s && Math.min(s.width, s.height) < 600 ? PHONE_SETTINGS : DEFAULT_SETTINGS;
+}
 
 const KEY = 'pool.settings.v2';
 /** Where settings were kept while the view refitted its zoom at each angle by default. They are
@@ -74,9 +84,8 @@ export const SHOT_CLOCKS = [0, 30, 60] as const;
 export const SPEEDS = [1, 1.5, 2] as const;
 
 /** Keeps every field of a stored value that is valid, and the default for the rest. */
-export function sanitize(value: unknown): Settings {
+export function sanitize(value: unknown, d: Settings = DEFAULT_SETTINGS): Settings {
   const v = (typeof value === 'object' && value !== null ? value : {}) as Record<string, unknown>;
-  const d = DEFAULT_SETTINGS;
   const oneOf = <T>(x: unknown, options: readonly T[], fallback: T): T =>
     options.includes(x as T) ? (x as T) : fallback;
   const name = (x: unknown, fallback: string) =>
@@ -100,14 +109,17 @@ export function sanitize(value: unknown): Settings {
   };
 }
 
-export function loadSettings(storage: Storage | null = safeStorage()): Settings {
+export function loadSettings(
+  storage: Storage | null = safeStorage(),
+  defaults: Settings = deviceDefaults(),
+): Settings {
   try {
     const raw = storage?.getItem(KEY);
-    if (raw) return sanitize(JSON.parse(raw));
+    if (raw) return sanitize(JSON.parse(raw), defaults);
     const old = storage?.getItem(OLD_KEY);
-    return old ? { ...sanitize(JSON.parse(old)), keepZoom: true } : DEFAULT_SETTINGS;
+    return old ? { ...sanitize(JSON.parse(old), defaults), keepZoom: true } : defaults;
   } catch {
-    return DEFAULT_SETTINGS;
+    return defaults;
   }
 }
 

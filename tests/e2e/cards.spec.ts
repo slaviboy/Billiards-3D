@@ -159,7 +159,7 @@ for (const [name, width, height, touch, upright] of [
 }
 
 test('the switch in Settings moves the cards, the picture playing with them', async ({ page }) => {
-  await startMatch(page, {});
+  await startMatch(page, { largeCards: false });
   await showPictures(page);
   const card = page.getByTestId('player-0');
   const video = card.locator('video');
