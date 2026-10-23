@@ -11,9 +11,10 @@
 
 // The menu bar: a computer has it in place of the menu button, in a top bar across the width over
 // the cards, with New game at its end; its menus change the view and the settings, open the
-// dialogs and concede a rack; the keys work them without moving the camera, and Escape still opens
-// the pause menu. A phone has the menu button until the bar is chosen, and the bar then fits the
-// screen, leaves the table in sight and keeps its menus on the screen.
+// dialogs (the About page among them) and concede a rack; the keys work them without moving the
+// camera, and Escape still opens the pause menu. A phone has the menu button until the bar is
+// chosen, and the bar then fits the screen, leaves the table in sight and keeps its menus on the
+// screen.
 
 import { expect, test, type Page } from '@playwright/test';
 import { covered, settle } from '../support/screen.ts';
@@ -53,6 +54,7 @@ test('a computer has the menu bar, and its menus do what the menu did', async ({
   // New game opens the choice of game.
   await page.getByRole('button', { name: 'New game' }).click();
   await expect(page.locator('.main-menu')).toBeVisible();
+  await expect(page.locator('.main-menu .brand strong')).toHaveText('Pool3D');
   await page.keyboard.press('Escape');
   await expect(page.locator('.dialog')).toHaveCount(0);
 
@@ -96,6 +98,17 @@ test('a computer has the menu bar, and its menus do what the menu did', async ({
   await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
   await page.keyboard.press('Escape');
   await expect(page.locator('.pause-menu')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.dialog')).toHaveCount(0);
+
+  // Help: the About page, with the game's version and what it is built with.
+  await open('Help');
+  await entry(page, 'About Pool 3D').click();
+  const about = page.getByRole('dialog', { name: 'About Pool 3D' });
+  await expect(about).toContainText('Version 0.1.0');
+  for (const text of ['GNU General Public License', 'pooltool', 'three.js', 'Pixabay']) {
+    await expect(about).toContainText(text);
+  }
   await page.keyboard.press('Escape');
   await expect(page.locator('.dialog')).toHaveCount(0);
 

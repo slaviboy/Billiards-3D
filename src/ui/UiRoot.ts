@@ -24,6 +24,7 @@ import { other } from '../rules/eightBall.ts';
 import { CHOICES, type Foul, type Seat } from '../rules/types.ts';
 import { dialogOpen, el } from './Dialog.ts';
 import {
+  aboutDialog,
   CLOTH_NAMES,
   controlsDialog,
   decisionDialog,
@@ -61,6 +62,9 @@ const FOUL_TEXT: Record<Foul, string> = {
 };
 
 const GROUP_NAME = ['', 'solids', 'stripes'] as const;
+
+/** The game's version, as package.json gives it, for the About page. */
+const VERSION = '0.1.0';
 
 /** Where large cards stand in a row under the buttons rather than beside the table; keep it in
  * step with the same query in pool.css. */
@@ -348,6 +352,7 @@ export class UiRoot {
         if (choice === 'settings') await settingsDialog(this.app.settings);
         else if (choice === 'controls') await controlsDialog();
         else if (choice === 'rules') await rulesDialog();
+        else if (choice === 'about') await aboutDialog(VERSION, __POOL_BUILD__);
         else return;
       }
     } finally {
@@ -757,6 +762,11 @@ export class UiRoot {
         items: () => [
           { label: '&Keyboard and mouse', shortcut: '?', action: () => void controlsDialog() },
           { label: '&Rules of 8-ball', action: () => void rulesDialog() },
+          sep,
+          {
+            label: '&About Pool 3D…',
+            action: () => void aboutDialog(VERSION, __POOL_BUILD__),
+          },
         ],
       },
     ];

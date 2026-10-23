@@ -1838,11 +1838,25 @@
     font-weight: 600;
   }
 
-  .rules-dialog ul {
+  .rules-dialog ul,
+  .about-dialog ul.credits {
     display: grid;
     gap: 0.7rem;
     margin: 0;
     padding-left: 1.8rem;
+  }
+
+  .about-dialog {
+    width: min(48rem, 92vw);
+  }
+
+  /* The gold "3D" by the game's name, as in the top bar. */
+  .brand-3d {
+    margin-left: 0.6rem;
+    color: var(--m-gold);
+    font: 700 1.2rem var(--m-font);
+    letter-spacing: 0.18em;
+    vertical-align: 0.9em;
   }
 
   .fine {

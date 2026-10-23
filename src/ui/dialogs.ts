@@ -67,14 +67,14 @@ function textInput(value: string, label: string): HTMLInputElement {
 }
 
 export type MenuChoice =
-  'practice' | 'local' | 'online' | 'join' | 'settings' | 'controls' | 'rules' | 'close';
+  'practice' | 'local' | 'online' | 'join' | 'settings' | 'controls' | 'rules' | 'about' | 'close';
 
 /** The main menu, over the table. */
 export function mainMenu(): Promise<MenuChoice> {
   return openDialog<MenuChoice>('Pool', 'close', ({ body, root, close }) => {
     root.classList.add('main-menu');
     const brand = el('div', 'brand');
-    brand.innerHTML = `<span class="brand-ball">${EIGHT_BALL}</span><span><strong>Pool</strong><small>8-ball, by the World Standardized Rules</small></span>`;
+    brand.innerHTML = `<span class="brand-ball">${EIGHT_BALL}</span><span><strong>Pool<span class="brand-3d" aria-hidden="true">3D</span></strong><small>8-ball, by the World Standardized Rules</small></span>`;
     const modes = el('div', 'mode-list');
     const mode = (icon: string, title: string, detail: string, value: MenuChoice) => {
       const b = el('button', 'mode-card');
@@ -105,6 +105,7 @@ export function mainMenu(): Promise<MenuChoice> {
       button('Settings', () => close('settings')),
       button('Keyboard and mouse', () => close('controls')),
       button('Rules', () => close('rules')),
+      button('About', () => close('about')),
     );
     body.append(brand, modes, links);
   });
@@ -465,6 +466,44 @@ export function rulesDialog(): Promise<void> {
       </ul>
       <p class="fine">Only the 8's pocket is called; the other balls need no call. Balls cannot leave the
         table or jump.</p>`;
+  });
+}
+
+/** What the game is, whose, under what licence, and what it is built with (as NOTICE.md says). */
+export function aboutDialog(version: string, build: string): Promise<void> {
+  return openDialog<void>('About Pool 3D', undefined, ({ body, root }) => {
+    root.classList.add('about-dialog');
+    const link = (href: string, text: string) =>
+      `<a href="${href}" target="_blank" rel="noopener">${text}</a>`;
+    body.innerHTML = `
+      <div class="brand">
+        <span class="brand-ball">${EIGHT_BALL}</span>
+        <span><strong>Pool<span class="brand-3d" aria-hidden="true">3D</span></strong>
+          <small>Version ${escapeHtml(version)} · build ${escapeHtml(build)}</small></span>
+      </div>
+      <p>A realistic 3D game of 8-ball for the browser: a table, cue and balls modelled from
+        published specifications, the physics of a billiards simulator, the WPA's World
+        Standardized Rules, and play against a friend online with voice and video.</p>
+      <p>Copyright © 2026 Stanislav Georgiev. Free software under the
+        ${link('https://www.gnu.org/licenses/gpl-3.0.html', 'GNU General Public License v3 or later')};
+        the source is on ${link('https://github.com/slaviboy/Billiards-3D', 'GitHub')}.</p>
+      <p><strong>Built with</strong></p>
+      <ul class="credits">
+        <li>${link('https://github.com/ekiefl/pooltool', 'pooltool')} 0.6.0 by Evan Kiefl and
+          contributors, Apache License 2.0: its billiards physics, translated into TypeScript.</li>
+        <li>${link('https://threejs.org/', 'three.js')}, MIT License.</li>
+        <li>${link('https://github.com/dmotz/trystero', 'Trystero')} and
+          ${link('https://github.com/paulmillr/noble-secp256k1', 'noble-secp256k1')}, MIT License,
+          for online play.</li>
+        <li>${link('https://github.com/kazuhikoarase/qrcode-generator', 'QR Code Generator')}, MIT
+          License, for the invitation's QR code.</li>
+        <li>Hits cut from recordings by Alex_Jauk and freesound_community on
+          ${link('https://pixabay.com/', 'Pixabay')}, under the Pixabay Content License.</li>
+        <li>Table, cue and balls modelled in ${link('https://www.blender.org/', 'Blender')} for
+          this project; the icons, cloth, wood and the game's notes are original.</li>
+      </ul>
+      <p class="fine">Parts of the interface come from the author's chess game, Grandmaster 3D. No
+        artwork, models or code from any commercial game are used.</p>`;
   });
 }
 
