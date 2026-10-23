@@ -52,8 +52,19 @@ function button(label: string, onClick: () => void, className = 'btn'): HTMLButt
   return node;
 }
 
+/** A text field with its label. */
 function field(label: string, control: HTMLElement): HTMLElement {
   const row = el('label', 'field');
+  row.append(el('span', '', label), control);
+  return row;
+}
+
+/**
+ * A row of choices with its heading. Not a <label>: that would name the first button after it
+ * (the group carries its own name).
+ */
+function choices(label: string, control: HTMLElement): HTMLElement {
+  const row = el('div', 'field');
   row.append(el('span', '', label), control);
   return row;
 }
@@ -105,10 +116,10 @@ export function onlineTermsDialog(settings: Settings): Promise<OnlineTerms | nul
     );
     body.append(
       el('p', 'online-intro', 'Choose the match, then send your friend the link.'),
-      field('Table', sizes.element),
-      field('Race to (racks to win)', races.element),
-      field('Shot clock', clocks.element),
-      field('First break', breakers.element),
+      choices('Table', sizes.element),
+      choices('Race to (racks to win)', races.element),
+      choices('Shot clock', clocks.element),
+      choices('First break', breakers.element),
     );
     const actions = el('div', 'dialog-actions');
     actions.append(
