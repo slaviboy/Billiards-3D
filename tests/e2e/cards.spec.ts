@@ -13,10 +13,11 @@
 // side, side by side under the buttons on a phone held upright. With a picture on both cards and
 // the widest row of balls, nothing spills off the screen or over the other controls, the pictures
 // are large, and the pockets and the cue ball stay in sight. Small cards in a call on a phone held
-// upright grow the top bar for square pictures. The switch in Settings moves the cards, and a
-// picture playing goes with them.
+// upright grow the top bar for 4:3 windows the pictures fill. The switch in Settings moves the
+// cards, and a picture playing goes with them.
 
 import { expect, test, type Page } from '@playwright/test';
+import { PNG } from 'pngjs';
 import { covered, settle } from '../support/screen.ts';
 
 const LARGE = { largeCards: true };
@@ -41,35 +42,39 @@ async function startMatch(page: Page, settings: object = LARGE) {
 
 /**
  * What the online play does when pictures arrive, for the second player at this device: a picture
- * on each card (or on those of `seats`), the second player's microphone and camera switches beside
- * that widest row, and the first player's speaker switch.
+ * on each card (or on those of `seats`), 4:3 as a computer's camera gives or 3:4 as a phone's held
+ * upright does, the second player's microphone and camera switches beside that widest row, and
+ * the first player's speaker switch.
  */
-async function showPictures(page: Page, seats: readonly number[] = [0, 1]) {
-  await page.evaluate((seats) => {
-    for (const seat of seats) {
-      const card = document.querySelector<HTMLElement>(`[data-testid="player-${seat}"]`)!;
-      const video = card.querySelector('video')!;
-      const canvas = document.createElement('canvas');
-      canvas.width = 640;
-      canvas.height = 480;
-      const g = canvas.getContext('2d')!;
-      video.srcObject = canvas.captureStream(10);
-      setInterval(() => {
-        g.fillStyle = seat ? '#a5563a' : '#3a6ea5';
-        g.fillRect(0, 0, 640, 480);
-      }, 100);
-      video.hidden = false;
-      void video.play();
-      card.classList.add('video-on');
-      const controls = card.querySelector<HTMLElement>('.card-media')!;
-      controls.hidden = false;
-      const [mic, cam, speaker] = [...controls.querySelectorAll('button')];
-      mic!.hidden = seat !== 1;
-      cam!.hidden = seat !== 1;
-      speaker!.hidden = seat === 1;
-      controls.querySelector<HTMLElement>('.card-media-silent')!.hidden = true;
-    }
-  }, seats);
+async function showPictures(page: Page, seats: readonly number[] = [0, 1], upright = false) {
+  await page.evaluate(
+    ([seats, upright]) => {
+      for (const seat of seats) {
+        const card = document.querySelector<HTMLElement>(`[data-testid="player-${seat}"]`)!;
+        const video = card.querySelector('video')!;
+        const canvas = document.createElement('canvas');
+        canvas.width = upright ? 480 : 640;
+        canvas.height = upright ? 640 : 480;
+        const g = canvas.getContext('2d')!;
+        video.srcObject = canvas.captureStream(10);
+        setInterval(() => {
+          g.fillStyle = seat ? '#a5563a' : '#3a6ea5';
+          g.fillRect(0, 0, canvas.width, canvas.height);
+        }, 100);
+        video.hidden = false;
+        void video.play();
+        card.classList.add('video-on');
+        const controls = card.querySelector<HTMLElement>('.card-media')!;
+        controls.hidden = false;
+        const [mic, cam, speaker] = [...controls.querySelectorAll('button')];
+        mic!.hidden = seat !== 1;
+        cam!.hidden = seat !== 1;
+        speaker!.hidden = seat === 1;
+        controls.querySelector<HTMLElement>('.card-media-silent')!.hidden = true;
+      }
+    },
+    [seats, upright] as const,
+  );
 }
 
 /** Everything wrong with the layout: parts off the screen, over each other, or cut short. */
@@ -143,13 +148,14 @@ for (const [name, width, height, touch, upright, settings] of [
   });
 }
 
-// Small cards on a phone held upright: in a call the top bar grows, each picture a large square
-// with the name and the balls under it, the initial in the square of a player without a camera.
+// Small cards on a phone held upright: in a call the top bar grows, each picture a 4:3 window as
+// wide as the card and filled by the picture, whatever the camera's shape, with the name and the
+// balls on its foot; the initial in the window of a player without a camera.
 test.describe('a video call on a phone held upright, the cards in the top bar', () => {
   test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
   const SMALL = { largeCards: false, menuBar: false };
 
-  /** Each card's square, its name and its balls, and where the bar ends. */
+  /** Each card's window, its name and its balls, and where the bar ends. */
   async function layout(page: Page) {
     return page.evaluate(() => {
       const box = (e: Element) => e.getBoundingClientRect().toJSON() as DOMRect;
@@ -160,7 +166,7 @@ test.describe('a video call on a phone held upright, the cards in the top bar', 
         const balls = card.querySelector<HTMLElement>('.player-balls')!;
         const initial = card.querySelector<HTMLElement>('.player-initial')!;
         return {
-          square: box(card.querySelector('.player-avatar')!),
+          window: box(card.querySelector('.player-avatar')!),
           name: box(name),
           balls: box(balls),
           cut: name.scrollWidth > name.clientWidth + 1 || balls.scrollWidth > balls.clientWidth + 1,
@@ -171,38 +177,54 @@ test.describe('a video call on a phone held upright, the cards in the top bar', 
     });
   }
 
-  test('shows each picture as a large square, the name and the balls under it', async ({
+  test('shows each picture filling a 4:3 window, the name and the balls on its foot', async ({
     page,
   }) => {
     await startMatch(page, SMALL);
-    await showPictures(page);
+    // Phones' cameras held upright: pictures taller than wide, cropped to the window.
+    await showPictures(page, [0, 1], true);
     await settle(page);
     expect(await covered(page)).toEqual([]);
     const { bar, cards } = await layout(page);
     expect(bar.right).toBeLessThanOrEqual(390);
+    expect(bar.height).toBeLessThanOrEqual(150);
     for (const [seat, card] of cards.entries()) {
-      const { square, name, balls } = card;
-      expect(square.width).toBeGreaterThanOrEqual(140);
-      expect(Math.abs(square.width - square.height)).toBeLessThanOrEqual(1);
-      expect(name.top).toBeGreaterThanOrEqual(square.bottom);
+      const { window, name, balls } = card;
+      expect(window.width).toBeGreaterThanOrEqual(140);
+      expect(Math.abs(window.height - (window.width * 3) / 4)).toBeLessThanOrEqual(1);
+      expect(name.top).toBeGreaterThanOrEqual(window.top + window.height / 2);
       expect(balls.top).toBeGreaterThanOrEqual(name.bottom - 1);
-      expect(balls.bottom).toBeLessThanOrEqual(bar.bottom);
+      expect(balls.bottom).toBeLessThanOrEqual(window.bottom);
+      expect(name.left).toBeGreaterThanOrEqual(window.left);
+      expect(name.right).toBeLessThanOrEqual(window.right);
       expect(card.cut).toBe(false);
-      const picture = (await page.getByTestId(`player-${seat}`).locator('video').boundingBox())!;
-      expect(picture.width).toBeGreaterThanOrEqual(square.width - 10);
+      // The picture reaches the window's sides: no dark bars beside it, above the band.
+      const video = page.getByTestId(`player-${seat}`).locator('video');
+      const picture = (await video.boundingBox())!;
+      expect(picture.width).toBeGreaterThanOrEqual(window.width - 10);
+      const png = PNG.sync.read(await video.screenshot());
+      const colour = seat ? [0xa5, 0x56, 0x3a] : [0x3a, 0x6e, 0xa5];
+      const y = Math.round(png.height * 0.3);
+      for (const x of [4, png.width - 5]) {
+        const i = (y * png.width + x) * 4;
+        for (const [c, value] of colour.entries()) {
+          expect(Math.abs(png.data[i + c]! - value)).toBeLessThanOrEqual(24);
+        }
+      }
     }
   });
 
-  test("with one camera on, shows the other player's initial in a square alike", async ({
+  test("with one camera on, shows the other player's initial in a window alike", async ({
     page,
   }) => {
     await startMatch(page, SMALL);
     const before = await layout(page);
-    expect(before.cards[0]!.square.width).toBeLessThan(50);
+    expect(before.cards[0]!.window.width).toBeLessThan(50);
     await showPictures(page, [1]);
     const { cards } = await layout(page);
-    expect(cards[0]!.square.width).toBeGreaterThanOrEqual(140);
-    expect(cards[0]!.square.width).toBeCloseTo(cards[1]!.square.width, 0);
+    expect(cards[0]!.window.width).toBeGreaterThanOrEqual(140);
+    expect(cards[0]!.window.width).toBeCloseTo(cards[1]!.window.width, 0);
+    expect(cards[0]!.window.height).toBeCloseTo(cards[1]!.window.height, 0);
     expect(cards[0]!.initial).toBe(true);
     expect(cards[1]!.initial).toBe(false);
   });

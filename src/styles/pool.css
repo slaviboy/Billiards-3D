@@ -1716,67 +1716,90 @@
 
   /*
    * A video call on a phone held upright, the cards in the top bar: the bar grows, and while either
-   * camera shows, each card's avatar is a square picture (the player's initial in it while their
-   * camera is off) with the name, the racks and the balls under it. The switches lie over the
-   * picture's lower corner, the clock runs round its edge, and the buttons stand in a column at
-   * the bar's end, leaving the pictures its width. (Large cards live in .hud-players, so only
-   * small ones match.)
+   * camera shows, each card's avatar is a window as wide as the card, 4:3 like a camera's picture,
+   * the picture cropped to fill it (the player's initial in it while their camera is off). The
+   * name, the racks and the balls lie over its foot on a dark band, the switches in its top corner,
+   * and the clock runs round its edge; the buttons stand in a column at the bar's end, leaving the
+   * windows its width. (Large cards live in .hud-players, so only small ones match.)
    */
   @media (max-width: 640px) and (orientation: portrait) {
     .hud-top:has(.video-on) .hud-buttons {
       flex-direction: column;
     }
 
+    /* The window fills the card; the band and what it carries lie over its lower rows. */
     .hud-top:has(.video-on) .player-card {
       display: grid;
-      grid-template-columns: minmax(0, 1fr) auto;
+      grid-template-columns: 0.4rem minmax(0, 1fr) auto 0.4rem;
+      grid-template-rows: 1fr auto auto 0.5rem;
       grid-template-areas:
-        'avatar avatar'
-        'name score'
-        'balls balls';
+        '. . . .'
+        '. name score .'
+        '. balls balls .'
+        '. . . .';
       align-items: center;
-      gap: 0.4rem 0.6rem;
-      padding: 0.4rem 0.4rem 0.6rem;
+      gap: 0.1rem 0.4rem;
+      padding: 0.3rem;
     }
 
     .hud-top:has(.video-on) .player-card.seat-1 {
-      grid-template-columns: auto minmax(0, 1fr);
+      grid-template-columns: 0.4rem auto minmax(0, 1fr) 0.4rem;
       grid-template-areas:
-        'avatar avatar'
-        'score name'
-        'balls balls';
+        '. . . .'
+        '. score name .'
+        '. balls balls .'
+        '. . . .';
+    }
+
+    .hud-top:has(.video-on) .player-card::after {
+      content: '';
+      grid-area: 2 / 1 / -1 / -1;
+      align-self: stretch;
+      z-index: 1;
+      margin: -0.3rem 0.35rem 0.35rem;
+      border-radius: 0 0 0.9rem 0.9rem;
+      background: rgba(10, 11, 14, 0.6);
+      pointer-events: none;
     }
 
     .hud-top:has(.video-on) .player-text {
       display: contents;
     }
 
+    .hud-top:has(.video-on) .player-name,
+    .hud-top:has(.video-on) .player-score,
+    .hud-top:has(.video-on) .player-balls {
+      z-index: 2;
+      text-shadow: 0 0.1rem 0.3rem rgba(0, 0, 0, 0.6);
+    }
+
     .hud-top:has(.video-on) .player-name {
       grid-area: name;
-      padding: 0 0.2rem;
+      font-size: 1.3rem;
     }
 
     .hud-top:has(.video-on) .player-score {
       grid-area: score;
-      padding: 0 0.2rem;
+      min-width: 0;
+      font-size: 1.7rem;
     }
 
     .hud-top:has(.video-on) .player-balls {
       grid-area: balls;
-      justify-content: center;
+      min-height: 0;
     }
 
     .hud-top:has(.video-on) .ball-glyph {
-      width: 1.4rem;
-      height: 1.4rem;
+      width: 1.3rem;
+      height: 1.3rem;
     }
 
     .hud-top:has(.video-on) .player-avatar {
       --clock-color: var(--m-gold);
-      grid-area: avatar;
+      grid-area: 1 / 1 / -1 / -1;
       width: 100%;
       height: auto;
-      aspect-ratio: 1;
+      aspect-ratio: 4 / 3;
       border-radius: 1.2rem;
       background: radial-gradient(circle at 34% 28%, #3b3e47, #1b1d22 72%);
     }
@@ -1785,13 +1808,13 @@
       --clock-color: var(--m-danger);
     }
 
-    /* The clock's ring, and the group's ball (the balls under the picture show the group). */
+    /* The clock's ring, and the group's ball (the balls on the band show the group). */
     .hud-top:has(.video-on) .player-avatar svg,
     .hud-top:has(.video-on) .player-badge {
       display: none;
     }
 
-    /* The clock as the square's edge, gold as far round as the time left reaches. */
+    /* The clock as the window's edge, gold as far round as the time left reaches. */
     .hud-top:has(.video-on) .player-avatar::before {
       content: '';
       position: absolute;
@@ -1809,19 +1832,22 @@
       pointer-events: none;
     }
 
+    /* The initial in the middle of what the band leaves. */
     .hud-top:has(.video-on) .player-initial {
-      font: 600 4.8rem var(--m-serif);
+      padding-bottom: 3.6rem;
+      font: 600 3.6rem var(--m-serif);
     }
 
     .hud-top:has(.video-on) .m-avatar-video {
       border-radius: 0.9rem;
+      object-position: 50% 40%;
     }
 
     .hud-top:has(.video-on) .card-media {
-      grid-area: avatar;
-      align-self: end;
+      grid-area: 1 / 1 / 2 / -1;
+      align-self: start;
       justify-self: start;
-      z-index: 1;
+      z-index: 2;
       margin: 0.6rem;
       padding: 0.1rem;
       border-radius: 1rem;

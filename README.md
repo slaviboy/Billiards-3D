@@ -29,10 +29,10 @@ table, seen in 3D or straight from above.
   view that turns, zooms and pans. Switching moves only the camera.
 - **Online with a friend**: send a link or show a QR code, with voice and video in the players'
   cards: large, beside the table, on a tablet or a computer, and small, in the top bar, on a phone,
-  where during a call the bar grows to show each camera as a large square with the name and the
-  balls under it (Settings can change either; large cards on a phone held upright stand side by
-  side under the buttons). There is no server: the two browsers meet through public Nostr relays, then talk
-  directly over WebRTC, and each side referees every shot itself. See
+  where during a call the bar grows to show each camera in a 4:3 window with the name and the
+  balls over its foot (Settings can change either; large cards on a phone held upright stand side
+  by side under the buttons). There is no server: the two browsers meet through public Nostr
+  relays, then talk directly over WebRTC, and each side referees every shot itself. See
   [docs/protocol.md](docs/protocol.md).
 - **Recorded sounds** for every contact, chosen by what happened and how hard: the cue tip, ball on
   ball, cushions, jaws, pockets, the rack. See [docs/sounds.md](docs/sounds.md).

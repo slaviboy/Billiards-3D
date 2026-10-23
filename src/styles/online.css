@@ -13,8 +13,8 @@
  * Online play: its dialogs (the warning before connecting, with a real checkbox rather than a
  * switch for the age confirmation; the invitation link and its QR code), the connection's state
  * under the cards, and video and voice on the cards: small enough to stay out of the table's way,
- * or square in a taller top bar on a phone held upright, or across the top of large cards (those
- * layouts are in pool.css).
+ * or in 4:3 windows in a taller top bar on a phone held upright, or across the top of large cards
+ * (those layouts are in pool.css).
  */
 :root[data-ui='modern'] {
   .online-dialog {
