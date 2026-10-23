@@ -269,6 +269,11 @@ test('each shot starts from no power, and a pull taken back to the start shoots 
   await page.mouse.down();
   await page.mouse.move(x, track.y + track.height * 0.7, { steps: 8 });
   expect((await state()).power).toBeCloseTo(0.7, 1);
+  // The colour keeps up with the grip: the fill ends where the pull is, at once.
+  const fillEnd = await page
+    .locator('.power-fill')
+    .evaluate((e) => e.getBoundingClientRect().bottom);
+  expect(Math.abs(fillEnd - (track.y + track.height * 0.7))).toBeLessThan(3);
   await expect(power).not.toHaveClass(/cancelling/);
   await page.mouse.move(x, track.y + 2, { steps: 8 });
   await expect(power).toHaveClass(/cancelling/);

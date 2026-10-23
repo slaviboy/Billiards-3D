@@ -181,6 +181,7 @@ export class PowerBar {
     const idle = canShoot && !this.drag && power < CANCEL_PULL;
     const cancelling = this.drag !== null && power < CANCEL_PULL;
     this.fill.style.height = `${percent}%`;
+    this.fill.classList.toggle('empty', percent === 0);
     this.element.style.setProperty('--power', String(power));
     this.element.style.setProperty('--power-color', powerColor(power));
     this.value.textContent = idle ? 'Pull' : cancelling ? 'Cancel' : `${percent}%`;

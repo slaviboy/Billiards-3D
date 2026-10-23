@@ -264,7 +264,6 @@
     font-variant-numeric: tabular-nums;
     letter-spacing: 0.02em;
     text-transform: none;
-    transition: color 0.1s;
   }
 
   /* A groove with the whole scale faint in it, and ticks at every tenth along its edges. */
@@ -315,7 +314,12 @@
       100% calc(100% / max(var(--power, 0.01), 0.01));
     border-bottom: 2px solid rgba(255, 255, 255, 0.75);
     box-shadow: 0 0.2rem 1rem var(--power-color, transparent);
-    transition: height 0.08s;
+  }
+
+  /* No pull, no edge: nothing light shows at the top of the empty bar. */
+  .power-fill.empty {
+    border-bottom: 0;
+    box-shadow: none;
   }
 
   /* The cue's grip, drawn back by the pull. */
@@ -410,9 +414,8 @@
     display: grid;
     place-items: end center;
     padding-bottom: 0.15rem;
-    border-bottom: 1px dashed rgba(255, 255, 255, 0.3);
-    background: rgba(255, 255, 255, 0.07);
-    color: rgba(255, 255, 255, 0.6);
+    border-bottom: 1px dashed rgba(0, 0, 0, 0.35);
+    color: rgba(0, 0, 0, 0.45);
     opacity: 0;
     pointer-events: none;
     transition:
