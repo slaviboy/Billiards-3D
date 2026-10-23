@@ -480,12 +480,16 @@
   }
 
   /* Dialogs: a frosted sheet with a plain title, a round close button and gold primary actions. */
+  /* The sheet stands in the middle while it fits, and at the top when it does not (its auto margins
+   * give way, where centring would push its title and close button off the screen), the backdrop
+   * scrolling to the rest. */
   .dialog-backdrop {
     position: fixed;
     inset: 0;
     z-index: 50;
     display: grid;
-    place-items: center;
+    overflow-y: auto;
+    overscroll-behavior: contain;
     background: rgba(6, 7, 10, 0.42);
     -webkit-backdrop-filter: blur(0.3rem);
     backdrop-filter: blur(0.3rem);
@@ -497,7 +501,10 @@
     box-sizing: border-box;
     min-width: min(34rem, 92vw);
     max-width: min(92vw, 50rem);
+    margin: auto;
+    /* Of the height the screen shows: a phone's vh counts it without the browser's bars. */
     max-height: 88vh;
+    max-height: 88dvh;
     overflow: auto;
     border: 1px solid var(--m-line-strong);
     border-radius: 2rem;

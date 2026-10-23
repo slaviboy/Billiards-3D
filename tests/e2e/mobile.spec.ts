@@ -81,6 +81,25 @@ for (const [name, width, height] of [
       }
     });
 
+    test('keeps the title and the close button of Settings in reach', async ({ page }) => {
+      await page.goto('./?menu=0');
+      await expect(page.locator('#app[data-ready="true"]')).toBeAttached();
+      await page.getByRole('button', { name: 'Menu (Esc)' }).tap();
+      await page.locator('.pause-item[data-choice="settings"]').tap();
+      const dialog = page.getByRole('dialog', { name: 'Settings' });
+      await expect(dialog).toBeVisible();
+      expect((await dialog.locator('.panel-header').boundingBox())!.y).toBeGreaterThanOrEqual(0);
+      // A phone's browser bars can leave less of the screen than the sheet was sized for: taller
+      // than the screen, it starts at the top rather than past it, and the rest scrolls into view.
+      await dialog.evaluate((d, h) => {
+        d.style.maxHeight = 'none';
+        d.style.minHeight = `${h + 200}px`;
+      }, page.viewportSize()!.height);
+      expect((await dialog.locator('.panel-header').boundingBox())!.y).toBeGreaterThanOrEqual(0);
+      await dialog.getByRole('button', { name: 'Close' }).tap();
+      await expect(page.locator('.dialog')).toHaveCount(0);
+    });
+
     test('a finger aims at the point it touches once Settings says so', async ({ page }) => {
       await page.goto('./?menu=0');
       await expect(page.locator('#app[data-ready="true"]')).toBeAttached();
