@@ -32,6 +32,31 @@ function capture(element: Element, pointerId: number): void {
 export const MAX_TIP = 0.5;
 export const MAX_ELEVATION = 30;
 
+/** The power's colours from none to full: mint, lime, gold, coral, red. */
+const POWER_STOPS: readonly (readonly [at: number, rgb: readonly [number, number, number]])[] = [
+  [0, [69, 211, 154]],
+  [0.35, [181, 230, 85]],
+  [0.6, [244, 201, 93]],
+  [0.8, [245, 154, 91]],
+  [1, [239, 90, 90]],
+];
+
+/** The colour of power `p` (0–1) on the bar's scale. */
+export function powerColor(p: number): string {
+  const t = Math.min(1, Math.max(0, p));
+  let i = 1;
+  while (i < POWER_STOPS.length - 1 && POWER_STOPS[i]![0] < t) i++;
+  const [a, from] = POWER_STOPS[i - 1]!;
+  const [b, to] = POWER_STOPS[i]!;
+  const k = b > a ? (t - a) / (b - a) : 0;
+  const rgb = from.map((c, j) => Math.round(c + (to[j]! - c) * k));
+  return `rgb(${rgb.join(', ')})`;
+}
+
+const POWER_GRADIENT = `linear-gradient(180deg, ${POWER_STOPS.map(
+  ([at, rgb]) => `rgb(${rgb.join(', ')}) ${at * 100}%`,
+).join(', ')})`;
+
 export interface PowerHandlers {
   canShoot(): boolean;
   power(): number;
@@ -54,6 +79,7 @@ export class PowerBar {
     this.element = el('div', 'm-card power');
     this.element.dataset.testid = 'power';
     this.element.dataset.tip = 'Pull down and let go to shoot';
+    this.element.style.setProperty('--power-gradient', POWER_GRADIENT);
     const label = el('div', 'power-label', 'Power');
     this.value = el('div', 'power-value');
     this.track = el('div', 'power-track');
@@ -134,6 +160,7 @@ export class PowerBar {
     const percent = Math.round(power * 100);
     this.fill.style.height = `${percent}%`;
     this.element.style.setProperty('--power', String(power));
+    this.element.style.setProperty('--power-color', powerColor(power));
     this.value.textContent = `${percent}%`;
     this.track.setAttribute('aria-valuenow', String(percent));
     this.element.classList.toggle('disabled', !this.handlers.canShoot());
