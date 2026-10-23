@@ -51,7 +51,8 @@ too. Escape opens the pause menu everywhere.
 - **Aim** by dragging on the cloth (with a finger, sweep round the cue ball), or with Shift and the
   arrow keys; `,` and `.` aim finely.
 - **Shoot** by pulling the power bar down and letting go, or set the power with Shift and ↑ ↓ and
-  press Space.
+  press Space. Each shot starts from no power; taking a pull back to the top of the bar and
+  letting go there shoots nothing, so you can stop, aim again and pull again.
 - **Spin**: drag the point on the cue ball in the dock, or use I J K L. The slider beside it raises
   the cue. A cue never passes through a rail or a ball: where it would, it rises just far enough
   to clear them, and the shot is struck at that elevation.

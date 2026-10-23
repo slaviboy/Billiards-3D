@@ -127,6 +127,7 @@ export const CONTROLS_HELP: readonly {
       [', .', 'Aim finely'],
       ['Shift + ↑ ↓', 'Power'],
       ['Pull the power bar back, let go', 'Shoot'],
+      ['Back to the top of the power bar, let go', 'Stop the pull without shooting'],
       ['Space, Enter', 'Shoot'],
       ['I J K L', 'Move the tip on the cue ball (spin)'],
       ['C', 'Centre the tip'],
