@@ -96,11 +96,11 @@ describe('the settings', () => {
 });
 
 describe('the hints on hover', () => {
-  it('show by default on every device, and stay off once turned off', () => {
-    expect(loadSettings(storage(), DEFAULT_SETTINGS).hints).toBe(true);
-    expect(loadSettings(storage(), PHONE_SETTINGS).hints).toBe(true);
+  it('are off by default on every device, and stay on once turned on', () => {
+    expect(loadSettings(storage(), DEFAULT_SETTINGS).hints).toBe(false);
+    expect(loadSettings(storage(), PHONE_SETTINGS).hints).toBe(false);
     const saved = storage();
-    saveSettings({ ...DEFAULT_SETTINGS, hints: false }, saved);
-    expect(loadSettings(saved, DEFAULT_SETTINGS).hints).toBe(false);
+    saveSettings({ ...DEFAULT_SETTINGS, hints: true }, saved);
+    expect(loadSettings(saved, DEFAULT_SETTINGS).hints).toBe(true);
   });
 });

@@ -65,7 +65,7 @@ too. Escape opens the pause menu everywhere.
 
 Every key and gesture is listed in the game under **Keyboard and mouse** (or press `?`). The (i)
 button in the top bar shows what each part of the screen does, with a line from each to its
-label; the tips that show when hovering over a control can be turned off in Settings.
+label; Settings can also show a tip when hovering over a control.
 
 ## Running it
 
