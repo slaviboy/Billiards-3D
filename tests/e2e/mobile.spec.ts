@@ -10,7 +10,8 @@
  */
 
 // On a phone, upright and on its side: the interface leaves every pocket and the cue ball in
-// sight in both views, nothing spills off the screen, and a finger can work the controls.
+// sight in both views, nothing spills off the screen, and a finger can work the controls without
+// leaving their tips standing.
 
 import { expect, test, type Page } from '@playwright/test';
 
@@ -73,10 +74,16 @@ for (const [name, width, height] of [
       expect(await covered(page)).toEqual([]);
     });
 
-    test('a finger works the spin and the power', async ({ page }) => {
+    test('a finger works the spin and the power, and leaves no tip standing', async ({ page }) => {
       await page.goto('./?menu=0');
       await expect(page.locator('#app[data-ready="true"]')).toBeAttached();
       await settle(page);
+      // A touch screen keeps the last element touched hovered: its tip must not show for that.
+      const tip = (selector: string) =>
+        page.evaluate(
+          (s) => getComputedStyle(document.querySelector(s)!, '::after').content,
+          selector,
+        );
       // A tap high on the cue ball's face: top spin.
       const ball = page.locator('.spin-ball');
       const box = (await ball.boundingBox())!;
@@ -84,6 +91,7 @@ for (const [name, width, height] of [
       const aim = await page.evaluate(() => window.__poolDebug!.aim());
       expect(aim.b).toBeGreaterThan(0.2);
       expect(Math.abs(aim.a)).toBeLessThan(0.05);
+      expect(await tip('.spin-ball')).toBe('none');
       // A tap on the power bar is a press and a release: it shoots.
       const track = (await page.locator('.power-track').boundingBox())!;
       await page.evaluate(() => window.__poolDebug!.setPlaybackSpeed(8));
@@ -93,6 +101,7 @@ for (const [name, width, height] of [
           timeout: 20000,
         })
         .toBe(1);
+      expect(await tip('.power')).toBe('none');
     });
   });
 }

@@ -169,10 +169,12 @@
     background: none;
   }
 
-  /* Tooltips from data-tip, shown below by default. */
-  [data-tip]:hover::after,
-  [data-tip]:focus-visible::after {
-    content: attr(data-tip);
+  /*
+   * Tooltips from data-tip, shown below by default: under a mouse, and on focus from the keyboard.
+   * Not on a touch screen, which keeps the last element touched hovered, so that its tip would
+   * stay up after the finger lifts. The box is drawn only once it has content.
+   */
+  [data-tip]::after {
     position: absolute;
     left: 50%;
     top: calc(100% + 0.8rem);
@@ -187,6 +189,16 @@
     pointer-events: none;
     z-index: 30;
     animation: m-fade 0.12s 0.35s both;
+  }
+
+  [data-tip]:focus-visible::after {
+    content: attr(data-tip);
+  }
+
+  @media (hover: hover) {
+    [data-tip]:hover::after {
+      content: attr(data-tip);
+    }
   }
 
   /* Near the right edge, tooltips line up with their button's right side. */
