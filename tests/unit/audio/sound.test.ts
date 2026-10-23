@@ -345,9 +345,11 @@ describe('the recorded hits', () => {
     sound.hit({ voice: 'ball', level: 0.7 });
     const firm = context.played.at(-1)!;
     expect(soft.cutoff!).toBeLessThan(firm.cutoff!);
-    for (const p of context.played) {
-      expect(p.rate).toBeGreaterThan(0.95);
-      expect(p.rate).toBeLessThan(1.25);
+    // The two clicks only: the context has also played the noise of a synthesised sound, whose
+    // rate varies more (0.94 to 1.06) and once in a dozen runs fell below these bounds.
+    for (const p of [soft, firm]) {
+      expect(p.rate).toBeGreaterThanOrEqual(0.97);
+      expect(p.rate).toBeLessThanOrEqual(1.03);
     }
   });
 
