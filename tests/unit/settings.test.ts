@@ -95,6 +95,18 @@ describe('the settings', () => {
   });
 });
 
+describe('aiming at the point a finger touches', () => {
+  it('is off by default on every device, and stays on once turned on', () => {
+    expect(loadSettings(storage(), DEFAULT_SETTINGS).touchAim).toBe(false);
+    expect(loadSettings(storage(), PHONE_SETTINGS).touchAim).toBe(false);
+    const saved = storage();
+    saveSettings({ ...DEFAULT_SETTINGS, touchAim: true }, saved);
+    expect(loadSettings(saved, PHONE_SETTINGS).touchAim).toBe(true);
+    const damaged = storage({ 'pool.settings.v2': JSON.stringify({ touchAim: 'yes' }) });
+    expect(loadSettings(damaged, PHONE_SETTINGS).touchAim).toBe(false);
+  });
+});
+
 describe('the hints on hover', () => {
   it('are off by default on every device, and stay on once turned on', () => {
     expect(loadSettings(storage(), DEFAULT_SETTINGS).hints).toBe(false);

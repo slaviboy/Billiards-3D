@@ -14,7 +14,8 @@
 //
 //   the cloth        aims: with a mouse the cue points at the pointer; with a finger the aim turns
 //                    as far as the finger sweeps round the cue ball, so the finger never hides what
-//                    it aims at. On the cue ball, when it is in hand, the drag moves it instead.
+//                    it aims at, or, if the player chose so, the cue points at the finger as at
+//                    the mouse. On the cue ball, when it is in hand, the drag moves it instead.
 //                    While it is not this player's turn, the cloth turns the view.
 //   a rail's corner  turns and tilts the view (so does the floor round the table).
 //   a rail's side    pans: the grabbed point of the table stays under the pointer.
@@ -106,6 +107,8 @@ export class TableInput {
   private readonly look = new Vector3();
   private readonly table = { x: 0, y: 0, z: 0 };
   enabled = true;
+  /** A finger aims at the point it touches, as the mouse does, rather than by its sweep. */
+  touchAim = false;
 
   constructor(
     private readonly element: HTMLElement,
@@ -224,7 +227,7 @@ export class TableInput {
         if (zone === 'cloth' && this.handlers.canAct()) {
           this.drag = { kind: 'aim' };
           const point = this.pointAt(x, y);
-          if (point && !touch) this.handlers.aimAt(point.x, point.y);
+          if (point && (!touch || this.touchAim)) this.handlers.aimAt(point.x, point.y);
         } else if (zone === 'edge') {
           this.startPan(x, y);
         } else {
@@ -301,7 +304,7 @@ export class TableInput {
       }
       case 'aim': {
         if (!this.handlers.canAct()) return;
-        if (!pointer.touch) {
+        if (!pointer.touch || this.touchAim) {
           const point = this.pointAt(event.clientX, event.clientY);
           if (point) this.handlers.aimAt(point.x, point.y);
           return;

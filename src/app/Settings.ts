@@ -36,6 +36,9 @@ export interface Settings {
   readonly leftHanded: boolean;
   /** Turning the view keeps its zoom, instead of refitting the table to the screen at each angle. */
   readonly keepZoom: boolean;
+  /** A finger on the cloth aims the cue from the cue ball straight at the point it touches, as the
+   * mouse does, instead of turning the aim as far as it sweeps round the cue ball. */
+  readonly touchAim: boolean;
   /**
    * The players' cards large, with room for a video call: beside the table, or in a row under the
    * buttons on a phone held upright. Otherwise they are small, in the top bar.
@@ -64,6 +67,7 @@ export const DEFAULT_SETTINGS: Settings = {
   cloth: 'blueGreen',
   leftHanded: false,
   keepZoom: true,
+  touchAim: false,
   largeCards: true,
   menuBar: true,
   hints: false,
@@ -108,6 +112,7 @@ export function sanitize(value: unknown, d: Settings = DEFAULT_SETTINGS): Settin
     cloth: oneOf(v.cloth, Object.keys(CLOTHS) as ClothName[], d.cloth),
     leftHanded: typeof v.leftHanded === 'boolean' ? v.leftHanded : d.leftHanded,
     keepZoom: typeof v.keepZoom === 'boolean' ? v.keepZoom : d.keepZoom,
+    touchAim: typeof v.touchAim === 'boolean' ? v.touchAim : d.touchAim,
     largeCards: typeof v.largeCards === 'boolean' ? v.largeCards : d.largeCards,
     menuBar: typeof v.menuBar === 'boolean' ? v.menuBar : d.menuBar,
     hints: typeof v.hints === 'boolean' ? v.hints : d.hints,

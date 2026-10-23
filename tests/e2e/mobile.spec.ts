@@ -69,6 +69,46 @@ for (const [name, width, height] of [
       }
     });
 
+    test('a finger aims at the point it touches once Settings says so', async ({ page }) => {
+      await page.goto('./?menu=0');
+      await expect(page.locator('#app[data-ready="true"]')).toBeAttached();
+      await settle(page);
+      const aim = () => page.evaluate(() => window.__poolDebug!.aim().heading);
+      // A point of the cloth off the cue ball's line, clear of the interface.
+      const cue = await page.evaluate(() => window.__poolDebug!.cueBall());
+      const target = { x: 1.27 / 4, y: 2.54 / 2 };
+      const at = await page.evaluate(
+        ([x, y]) => window.__poolDebug!.toClient(x!, y!, 0.028575),
+        [target.x, target.y],
+      );
+      expect(
+        await page.evaluate(
+          ([x, y]) => document.elementFromPoint(x!, y!)?.classList.contains('scene-canvas'),
+          [at.x, at.y],
+        ),
+      ).toBe(true);
+      const heading = Math.atan2(target.y - cue.y, target.x - cue.x);
+
+      // By default a touch alone does not aim: the finger turns the aim as it sweeps.
+      const before = await aim();
+      expect(Math.abs(before - heading)).toBeGreaterThan(0.1);
+      await page.touchscreen.tap(at.x, at.y);
+      expect(await aim()).toBe(before);
+
+      await page.getByRole('button', { name: 'Menu (Esc)' }).tap();
+      await page.locator('.pause-item[data-choice="settings"]').tap();
+      await page
+        .getByRole('switch', { name: 'Aim from the cue ball at the point a finger touches' })
+        .setChecked(true);
+      await page.keyboard.press('Escape');
+      await expect(page.locator('.dialog')).toHaveCount(0);
+      await page.touchscreen.tap(at.x, at.y);
+      expect(await aim()).toBeCloseTo(heading, 3);
+      expect(await page.evaluate(() => localStorage.getItem('pool.settings.v2'))).toContain(
+        '"touchAim":true',
+      );
+    });
+
     test('a finger works the spin and the power, and leaves no tip standing', async ({ page }) => {
       await page.goto('./?menu=0');
       await expect(page.locator('#app[data-ready="true"]')).toBeAttached();

@@ -250,6 +250,11 @@ export function settingsDialog(store: Store<Settings>): Promise<void> {
     const [keepZoom] = switchRow('Keep the zoom while turning the view', s.keepZoom, (on) =>
       set({ keepZoom: on }),
     );
+    const [touchAim] = switchRow(
+      'Aim from the cue ball at the point a finger touches',
+      s.touchAim,
+      (on) => set({ touchAim: on }),
+    );
     const name = textInput(s.name, 'Your name');
     name.addEventListener('change', () => set({ name: name.value.trim() || s.name }));
     body.append(
@@ -258,6 +263,7 @@ export function settingsDialog(store: Store<Settings>): Promise<void> {
         field('Camera', view.element),
         keepZoom,
         field('Aiming guide', guide.element),
+        touchAim,
         field('Shot playback', speed.element),
         field('Cloth', cloth.element),
       ),
