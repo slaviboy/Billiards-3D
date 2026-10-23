@@ -46,7 +46,9 @@ a friend online** to invite someone, or **Join a game** to open a link you were 
   arrow keys; `,` and `.` aim finely.
 - **Shoot** by pulling the power bar down and letting go, or set the power with Shift and ↑ ↓ and
   press Space.
-- **Spin**: drag the point on the cue ball in the dock, or use I J K L.
+- **Spin**: drag the point on the cue ball in the dock, or use I J K L. The slider beside it raises
+  the cue. A cue never passes through a rail or a ball: where it would, it rises just far enough
+  to clear them, and the shot is struck at that elevation.
 - **Ball in hand**: drag the cue ball.
 - **The camera** works as on the board of the chess game this one shares its interface with: drag
   a rail's corner (or the floor) to turn and tilt, a rail's side to pan, right-drag anywhere to

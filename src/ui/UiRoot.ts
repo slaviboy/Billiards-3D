@@ -136,7 +136,7 @@ export class UiRoot {
         this.app.aim.b = b;
         this.app.refresh();
       },
-      elevation: () => this.app.aim.elevation,
+      elevation: () => this.app.elevation,
       setElevation: (degrees) => {
         this.app.aim.elevation = degrees;
         this.app.refresh();

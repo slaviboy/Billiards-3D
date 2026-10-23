@@ -24,7 +24,14 @@ import {
   type MatchState,
   type ShotResult,
 } from '../game/MatchController.ts';
-import { encodePlacement, encodeShot, type Placement, type ShotCode } from '../game/shotCodec.ts';
+import { minimumElevation } from '../cue/clearance.ts';
+import {
+  encodePlacement,
+  encodeShot,
+  MAX_PITCH,
+  type Placement,
+  type ShotCode,
+} from '../game/shotCodec.ts';
 import { Motion, type PhysicsEvent } from '../physics/index.ts';
 import type { PocketId } from '../physics/types.ts';
 import { legalTargets } from '../rules/eightBall.ts';
@@ -271,11 +278,31 @@ export class App {
   get shotCode(): ShotCode {
     return encodeShot(
       this.aim.heading,
-      this.aim.elevation,
+      this.elevation,
       cueSpeed(this.aim.power),
       this.aim.a,
       this.aim.b,
     );
+  }
+
+  /**
+   * The cue's elevation in degrees as drawn and struck: the player's, raised as far as it takes
+   * for the cue to pass over the rails and balls behind the cue ball (to a tenth of a degree).
+   */
+  get elevation(): number {
+    const { balls } = this.match.current;
+    const cueBall = balls[0]!;
+    if (cueBall.s === Motion.Pocketed) return this.aim.elevation;
+    const others = balls
+      .filter((b, n) => n > 0 && b.s !== Motion.Pocketed)
+      .map((b) => ({ x: b.rx, y: b.ry }));
+    const least = minimumElevation(
+      this.match.table.spec,
+      { x: cueBall.rx, y: cueBall.ry, heading: this.aim.heading, a: this.aim.a, b: this.aim.b },
+      others,
+      ((MAX_PITCH / 10) * Math.PI) / 180,
+    );
+    return Math.max(this.aim.elevation, Math.ceil((least * 1800) / Math.PI - 1e-9) / 10);
   }
 
   get intent(): Intent {
@@ -406,7 +433,7 @@ export class App {
       ball: this.ballCentre,
       dirX: Math.cos(this.aim.heading),
       dirZ: -Math.sin(this.aim.heading),
-      elevation: (this.aim.elevation * Math.PI) / 180,
+      elevation: (this.elevation * Math.PI) / 180,
       a: this.aim.a,
       b: this.aim.b,
       gap: 0.012 + this.pull * 0.22,
