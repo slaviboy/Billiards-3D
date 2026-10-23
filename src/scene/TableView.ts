@@ -79,11 +79,16 @@ export class TableView {
           mesh.material = this.surface(mesh.material as Material);
           const part = mesh.name.replace(/^\d+ft-/, '');
           // The cloth, cushions, rails and leathers take the shadows of balls and cue; the frame
-          // casts the table's shadow on the floor.
+          // casts the table's shadow on the floor, and the bed (the slate) stops the light there,
+          // so nothing on the cloth throws a shadow through the table.
           mesh.receiveShadow =
             part === 'bed' || part.startsWith('cushion') || part === 'rails' || part === 'leathers';
           mesh.castShadow =
-            part === 'rails' || part === 'apron' || part === 'legs' || part === 'leathers';
+            part === 'bed' ||
+            part === 'rails' ||
+            part === 'apron' ||
+            part === 'legs' ||
+            part === 'leathers';
         });
         this.loaded.push(root);
         return root;
