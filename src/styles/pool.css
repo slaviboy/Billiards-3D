@@ -805,8 +805,26 @@
     grid-template-areas:
       'video video video video'
       'avatar name name score'
-      'avatar tag media score'
+      'avatar tag tag score'
       'balls balls balls balls';
+  }
+
+  /* With a picture, the switches lie over its lower corner, like a call's. */
+  .player-card.large.video-on .card-media {
+    grid-area: video;
+    align-self: end;
+    z-index: 1;
+    margin: 0.6rem;
+    padding: 0.2rem;
+    border-radius: 1.1rem;
+    background: rgba(10, 11, 14, 0.55);
+    -webkit-backdrop-filter: blur(0.6rem);
+    backdrop-filter: blur(0.6rem);
+  }
+
+  .player-card.large.video-on .m-media-btn.m-icon-btn:not([aria-pressed='true'], .blocked),
+  .player-card.large.video-on .card-media-silent {
+    color: var(--m-text);
   }
 
   .player-card.large.active {
@@ -1099,7 +1117,7 @@
         'video video video'
         'avatar name score'
         'avatar tag score'
-        'balls balls media';
+        'balls balls balls';
     }
 
     .player-card.large .player-avatar {
