@@ -381,8 +381,12 @@ export class ElevationSlider {
 
   render(): void {
     const degrees = Math.round(this.handlers.elevation());
-    this.track.style.setProperty('--elevation', String(degrees / MAX_ELEVATION));
-    this.track.setAttribute('aria-valuenow', String(degrees));
+    // The game raises the cue past the groove's reach to clear a rail or a ball (up to 60°): the
+    // grip then rests at the top, and the degrees say how high it is.
+    const shown = Math.min(degrees, MAX_ELEVATION);
+    this.track.style.setProperty('--elevation', String(shown / MAX_ELEVATION));
+    this.track.setAttribute('aria-valuenow', String(shown));
+    this.track.setAttribute('aria-valuetext', `${degrees}°`);
     this.value.textContent = `${degrees}°`;
     const enabled = this.handlers.enabled();
     this.element.classList.toggle('disabled', !enabled);

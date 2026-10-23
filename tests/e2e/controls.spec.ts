@@ -13,7 +13,7 @@
 // turns the view, a rail's side pans it, the wheel zooms, Home brings it back, T switches to the
 // top view; the cloth aims; none of it touches the game. Each shot starts from no power, and a pull
 // taken back to the start of the power bar shoots nothing. The hints on hover are off until
-// turned on.
+// turned on. A cue the game raises past the elevation slider's reach leaves its grip in the groove.
 
 import { expect, test, type Page } from '@playwright/test';
 
@@ -331,4 +331,22 @@ test('the hints on hover are off until turned on', async ({ page }) => {
   expect(await page.evaluate(() => localStorage.getItem('pool.settings.v2'))).toContain(
     '"hints":true',
   );
+});
+
+test("a cue raised past the slider's reach keeps its grip in the groove", async ({ page }) => {
+  // The cue ball in hand, against the head rail, the cue aimed up the table: the game raises the
+  // cue over the rail, higher than the slider goes.
+  const cue = await debug(page, () => window.__poolDebug!.cueBall());
+  const from = await at(page, cue.x, cue.y);
+  const to = await at(page, cue.x + 0.2, 0.0291);
+  await drag(page, from, to.x - from.x, to.y - from.y);
+  const far = await at(page, cue.x + 0.2, L - 0.5);
+  await page.mouse.click(far.x, far.y);
+  await expect(page.locator('.spin-elevation-value')).toHaveText(/^(3\d|[4-6]\d)°$/);
+
+  const track = (await page.locator('.elevation-track').boundingBox())!;
+  const grip = (await page.locator('.elevation-grip').boundingBox())!;
+  expect(grip.y).toBeGreaterThanOrEqual(track.y - 0.5);
+  expect(grip.y + grip.height).toBeLessThanOrEqual(track.y + track.height + 0.5);
+  expect(grip.y - track.y).toBeLessThan(1);
 });
