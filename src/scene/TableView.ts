@@ -10,10 +10,11 @@
  */
 
 // The table on screen: the model made in Blender (public/models/table-<size>.glb), which is already
-// in the scene's frame, with the game's own cloth and wood. Both sizes are loaded on demand and
-// kept, so changing tables between racks is instant.
+// in the scene's frame, with the game's own cloth, wood, leather and nets. Both sizes are loaded on
+// demand and kept, so changing tables between racks is instant.
 
 import {
+  type Color,
   Group,
   type Material,
   type Mesh,
@@ -23,7 +24,13 @@ import {
 } from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import type { TableSize } from '../table/spec.ts';
-import { clothMaterial, type ClothName, woodMaterial } from './surfaces.ts';
+import {
+  clothMaterial,
+  type ClothName,
+  leatherMaterial,
+  netMaterial,
+  woodMaterial,
+} from './surfaces.ts';
 
 export class TableView {
   readonly group = new Group();
@@ -31,7 +38,7 @@ export class TableView {
   private readonly models = new Map<TableSize, Promise<Object3D>>();
   private shown: Object3D | null = null;
   private cloth: MeshPhysicalMaterial = clothMaterial();
-  private readonly woods = new Map<string, MeshPhysicalMaterial>();
+  private readonly surfaces = new Map<string, Material>();
 
   constructor(private readonly baseUrl: string) {
     this.group.name = 'table';
@@ -71,10 +78,12 @@ export class TableView {
           if (!mesh.isMesh) return;
           mesh.material = this.surface(mesh.material as Material);
           const part = mesh.name.replace(/^\d+ft-/, '');
-          // The cloth, cushions and rails take the shadows of balls and cue; the frame casts the
-          // table's shadow on the floor.
-          mesh.receiveShadow = part === 'bed' || part.startsWith('cushion') || part === 'rails';
-          mesh.castShadow = part === 'rails' || part === 'apron' || part === 'legs';
+          // The cloth, cushions, rails and leathers take the shadows of balls and cue; the frame
+          // casts the table's shadow on the floor.
+          mesh.receiveShadow =
+            part === 'bed' || part.startsWith('cushion') || part === 'rails' || part === 'leathers';
+          mesh.castShadow =
+            part === 'rails' || part === 'apron' || part === 'legs' || part === 'leathers';
         });
         this.loaded.push(root);
         return root;
@@ -91,20 +100,25 @@ export class TableView {
       material.dispose();
       return this.cloth;
     }
-    if (name.endsWith('wood')) {
-      let wood = this.woods.get(name);
-      if (!wood) {
-        wood = woodMaterial((material as MeshStandardMaterial).color.clone(), name);
-        this.woods.set(name, wood);
-      }
-      material.dispose();
-      return wood;
+    const make = name.endsWith('wood')
+      ? (c: Color) => woodMaterial(c, name)
+      : name === 'leather'
+        ? leatherMaterial
+        : name === 'net'
+          ? netMaterial
+          : null;
+    if (!make) return material;
+    let surface = this.surfaces.get(name);
+    if (!surface) {
+      surface = make((material as MeshStandardMaterial).color.clone());
+      this.surfaces.set(name, surface);
     }
-    return material;
+    material.dispose();
+    return surface;
   }
 
   dispose(): void {
     this.cloth.dispose();
-    for (const wood of this.woods.values()) wood.dispose();
+    for (const surface of this.surfaces.values()) surface.dispose();
   }
 }

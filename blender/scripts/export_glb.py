@@ -43,7 +43,8 @@ def export(objects, path):
         export_yup=True,
         export_materials="EXPORT",
         export_normals=True,
-        export_texcoords=False,
+        # Only the nets carry texture coordinates (for their knots); nothing else has any.
+        export_texcoords=True,
         export_tangents=False,
         export_vertex_color="NONE",
         export_draco_mesh_compression_enable=False,

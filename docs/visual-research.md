@@ -72,8 +72,8 @@ surface measured between the cushion noses**, not the outside of the frame.
 | Vertical pocket angle (back draft) | 12–15° | [S] 1 §9; we use 13.5° (visual only) [A] |
 | Shelf (mouth line to the slate cut) | corner 1–2¼ in, side 0–0.375 in | [S] 1 §9; starting values 1.5 / 0.1875 in, calibrated by tests within the range [A] |
 | Facings | hard rubber, 1/16–¼ in, ⅛ in preferred | [S] 1 §9; ⅛ in (visual only) [A] |
-| Liners | plastic, rubber or leather; the upper inner wall turns balls downwards | [S] 1 §10 |
-| Drop pockets | baskets for at least 6 balls | [S] 1 §11 — the model uses drop pockets with cups, as in photo 7.4 |
+| Liners | plastic, rubber or leather; the upper inner wall turns balls downwards | [S] 1 §10 — the model lines the hole with the pocket's leather [A] |
+| Drop pockets | baskets for at least 6 balls | [S] 1 §11 — the model hangs a net under a leather cover at each pocket, after the owner's photographs (section 7): the covers wrap the frame's corners, which are rounded about the corner pockets, and stand out past the rail at the side pockets, where the net shows in a notch in the apron [A] |
 | Jaw rounding and pocket (drop) circle radius | not specified by the WPA | [A] calibrated by tests: a slow ball along the rail and a straight-in ball drop, a ball hitting the jaw stays out |
 
 ### 2.5 Sights and markings

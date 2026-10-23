@@ -11,9 +11,16 @@
 
 // The table's surfaces, which the models carry only as plain colours (blender/scripts/materials.py):
 // the cloth gets a felt's soft sheen and a faint mottle, the wood a lacquered grain running along
-// each rail. Both are drawn from the world position, so the models need no texture coordinates.
+// each rail, the pockets' leather a pebbled grain. These are drawn from the world position, so the
+// models need no texture coordinates; only the nets carry some, for their knots.
 
-import { Color, MeshPhysicalMaterial, SRGBColorSpace } from 'three';
+import {
+  Color,
+  DoubleSide,
+  MeshPhysicalMaterial,
+  MeshStandardMaterial,
+  SRGBColorSpace,
+} from 'three';
 
 /** Cloth colours a player can choose (WPA 12 allows yellow-green, blue-green, electric blue). */
 export const CLOTHS = {
@@ -75,6 +82,68 @@ export function clothMaterial(name: ClothName = 'blueGreen'): MeshPhysicalMateri
   diffuseColor.rgb *= 0.95 + 0.08 * mottle;`,
     'pool-cloth',
   );
+  return material;
+}
+
+/** The pockets' leather: a fine pebbled grain and a soft, worn patina, a little waxed. */
+export function leatherMaterial(base: Color): MeshPhysicalMaterial {
+  const material = new MeshPhysicalMaterial({
+    color: base,
+    roughness: 0.6,
+    metalness: 0,
+    clearcoat: 0.12,
+    clearcoatRoughness: 0.5,
+    envMapIntensity: 0.5,
+  });
+  material.name = 'leather';
+  withWorldPosition(
+    material,
+    /* glsl */ `
+  float pebble = poolNoise(vPoolWorld * 900.0) * 0.6 + poolNoise(vPoolWorld * 260.0) * 0.4;
+  float patina = poolNoise(vPoolWorld * 14.0);
+  diffuseColor.rgb *= (0.9 + 0.12 * pebble) * (0.9 + 0.14 * patina);`,
+    'pool-leather',
+  );
+  return material;
+}
+
+/** Diamonds of the net round a pocket, and the size of one, metres down the net. */
+const NET_AROUND = 18;
+const NET_CELL = 0.022;
+
+/**
+ * The pockets' nets: knotted cord in diamonds, from the net's texture coordinates (once round it,
+ * metres down it), the gaps between the cords dark. Where the diamonds grow too small to see,
+ * they blend into the cord's average shade instead of shimmering.
+ */
+export function netMaterial(base: Color): MeshStandardMaterial {
+  const material = new MeshStandardMaterial({
+    color: base,
+    roughness: 0.95,
+    metalness: 0,
+    side: DoubleSide,
+  });
+  material.name = 'net';
+  material.onBeforeCompile = (shader) => {
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', '#include <common>\nvarying vec2 vPoolNet;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\n  vPoolNet = uv;');
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <common>', '#include <common>\nvarying vec2 vPoolNet;')
+      .replace(
+        '#include <color_fragment>',
+        /* glsl */ `#include <color_fragment>
+  vec2 cell = vec2(vPoolNet.x * ${NET_AROUND.toFixed(1)}, vPoolNet.y / ${NET_CELL});
+  float along = abs(fract(cell.x + cell.y) - 0.5);
+  float across = abs(fract(cell.x - cell.y) - 0.5);
+  float d = max(along, across);
+  float edge = fwidth(d);
+  float cord = smoothstep(0.38 - edge, 0.38 + edge, d);
+  float far = clamp(length(fwidth(cell)) * 2.0 - 0.6, 0.0, 1.0);
+  diffuseColor.rgb *= mix(0.1, 1.0, mix(cord, 0.55, far));`,
+      );
+  };
+  material.customProgramCacheKey = () => 'pool-net';
   return material;
 }
 

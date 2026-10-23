@@ -12,7 +12,8 @@ the research (docs/visual-research.md) before they go into the game:
 
     table-top.jpg            the 9-ft table from straight above, racked
     table-three-quarter.jpg  from a corner, the cue ready behind the cue ball
-    pocket-closeup.jpg       a corner pocket's jaws, facings, liner and a ball at the lip
+    pocket-closeup.jpg       a corner pocket's jaws, facings and leather, and a ball at the lip
+    table-corner.jpg         a corner from outside, low: its leather cover, the frame and a leg
     cue-tip.jpg              the cue's tip, ferrule and shaft at the cue ball
     balls-lineup.jpg         the sixteen balls in a row
     game-lighting.jpg        the table under the game's lighting, from the game's camera
@@ -213,6 +214,11 @@ def main():
     render(scene, os.path.join(out, "pocket-closeup.jpg"))
     place(balls[3], 0.0, 0.0)
     rack(balls, foot_y)
+
+    # 3b. The same corner from outside and low: the leather over it, the frame and a leg.
+    cue.hide_render = True
+    look(camera, (corner.x - 1.0, corner.y - 0.85, 0.3), (corner.x + 0.08, corner.y + 0.18, -0.3), lens=35)
+    render(scene, os.path.join(out, "table-corner.jpg"))
 
     # 4. The cue's tip at the cue ball.
     place(balls[0], 0.2, -0.6, spin=0.3)

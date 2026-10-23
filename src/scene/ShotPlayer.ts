@@ -13,7 +13,7 @@
 // path in closed form), so each frame just asks where every ball is at the frame's moment of the
 // shot: the result does not depend on the frame rate, only the smoothness does. Spin turns the
 // balls (integrated in small fixed steps; visual only), and a pocketed ball drops into the pocket's
-// cup and comes to rest there with the others.
+// net and comes to rest there with the others.
 
 import type { PocketShape } from '../table/geometry.ts';
 import { directionToScene, toScene } from '../table/frame.ts';
@@ -30,8 +30,8 @@ import {
 import type { BallSet } from './BallSet.ts';
 
 const R = BALL_RADIUS;
-/** Height of a resting pocketed ball's centre: on the cup's floor (blender/scripts/table.py). */
-const CUP_FLOOR = -0.045 - 0.115 + 0.004;
+/** Where pocketed balls rest: the pocket net's floor (NET_FLOOR in blender/scripts/table.py). */
+export const NET_FLOOR = -0.045 - 0.115 + 0.004;
 const GRAVITY = 9.81;
 /** The step spin is integrated in, seconds of shot time. */
 const SPIN_STEP = 1 / 240;
@@ -40,7 +40,7 @@ interface Drop {
   readonly t: number;
   readonly pocket: number;
   readonly entry: Readonly<BallState>;
-  /** Where it comes to rest in the cup (scene coordinates). */
+  /** Where it comes to rest in the net (scene coordinates). */
   readonly rest: { x: number; y: number; z: number };
 }
 
@@ -89,7 +89,7 @@ export class ShotPlayer {
     this.pocketCounts = [0, 0, 0, 0, 0, 0];
     states.forEach((s, n) => {
       if (s.s === Motion.Pocketed) {
-        // A pocketed ball's state lies at its pocket's centre: rest it in that pocket's cup.
+        // A pocketed ball's state lies at its pocket's centre: rest it in that pocket's net.
         let pocket = 0;
         let best = Infinity;
         this.table.pockets.forEach((p, i) => {
@@ -191,7 +191,7 @@ export class ShotPlayer {
 
   /**
    * A pocketed ball, `since` seconds after its centre crossed the pocket's edge: it runs on a
-   * little, falls into the cup and settles. Returns whether it is still moving.
+   * little, falls into the net and settles. Returns whether it is still moving.
    */
   private placeDropping(n: number, drop: Drop, since: number): boolean {
     const { entry, rest } = drop;
@@ -201,7 +201,7 @@ export class ShotPlayer {
     const fall = Math.sqrt((2 * (R - rest.y)) / GRAVITY);
     const t = Math.min(since, fall);
     const k = t / fall;
-    // Run on, slowed by the liner, and home toward the resting place as it falls.
+    // Run on, slowed by the leather, and home toward the resting place as it falls.
     const runX = start.x + this.spin.x * t * 0.6;
     const runZ = start.z + this.spin.z * t * 0.6;
     const x = runX + (rest.x - runX) * k * k;
@@ -212,18 +212,18 @@ export class ShotPlayer {
     return since < fall;
   }
 
-  /** The next free resting place in a pocket's cup. */
+  /** The next free resting place in a pocket's net. */
   private restIn(pocket: number): { x: number; y: number; z: number } {
     const shape = this.table.pockets[pocket]!;
     toScene(shape.center.x, shape.center.y, 0, this.table.W, this.table.L, this.out);
     const k = this.pocketCounts[pocket]!++;
-    // Three in the cup's bottom, then the next layer on top of them.
+    // Three in the net's bottom, then the next layer on top of them.
     const layer = Math.floor(k / 3);
     const angle = (k % 3) * ((2 * Math.PI) / 3) + layer * 0.9;
     const spread = 1.15 * R;
     return {
       x: this.out.x + Math.cos(angle) * spread,
-      y: CUP_FLOOR + R + layer * R * 1.6,
+      y: NET_FLOOR + R + layer * R * 1.6,
       z: this.out.z + Math.sin(angle) * spread,
     };
   }

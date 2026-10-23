@@ -10,15 +10,17 @@
  */
 
 // The exported models match the simulation: every cushion vertex at nose height lies on the
-// outline the balls bounce off, and the nose runs the full length of every cushion piece. Also
-// checks the files are valid glTF 2.0 of a sensible size, with the parts the game looks for.
+// outline the balls bounce off, and the nose runs the full length of every cushion piece; the
+// pocketed balls rest inside the nets. Also checks the files are valid glTF 2.0 of a sensible size,
+// with the parts the game looks for.
 
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { buildTable } from '../../src/table/geometry.ts';
-import { TABLE_SIZES, tableSpec } from '../../src/table/spec.ts';
+import { BALL_RADIUS, TABLE_SIZES, tableSpec } from '../../src/table/spec.ts';
 import { CUE_LENGTH } from '../../src/cue/spec.ts';
+import { NET_FLOOR } from '../../src/scene/ShotPlayer.ts';
 
 const root = join(import.meta.dirname, '..', '..');
 
@@ -98,7 +100,7 @@ describe.each(TABLE_SIZES)('the %s table model', (size) => {
   it('is glTF 2.0 with the parts the game uses, each placed at the origin', () => {
     expect(gltf.json.asset.version).toBe('2.0');
     const names = gltf.json.nodes.map((n) => n.name);
-    for (const part of ['bed', 'rails', 'liners', 'pockets', 'sights', 'apron', 'legs', 'spot']) {
+    for (const part of ['bed', 'rails', 'leathers', 'nets', 'sights', 'apron', 'legs', 'spot']) {
       expect(names).toContain(`${size}-${part}`);
     }
     for (let rail = 0; rail < 6; rail++) expect(names).toContain(`${size}-cushion-${rail}`);
@@ -136,6 +138,34 @@ describe.each(TABLE_SIZES)('the %s table model', (size) => {
       ] as const) {
         const nearest = Math.min(...noses.map(([nx, ny]) => Math.hypot(nx! - x, ny! - y)));
         expect(nearest).toBeLessThan(1e-4);
+      }
+    }
+  });
+});
+
+describe.each(TABLE_SIZES)('the %s table nets', (size) => {
+  const gltf = readGlb(`table-${size}.glb`);
+  const spec = tableSpec(size);
+  const { W, L } = spec;
+  const nets = gltf.json.nodes.find((n) => n.name === `${size}-nets`)!;
+  const points = positions(gltf, nets);
+
+  it('hold the pocketed balls where they rest, three to a layer on the floor', () => {
+    const R = BALL_RADIUS;
+    for (const pocket of buildTable(spec).pockets) {
+      const cx = pocket.center.x - W / 2;
+      const cz = L / 2 - pocket.center.y;
+      const own = points.filter(([x, , z]) => Math.hypot(x! - cx, z! - cz) < 0.1);
+      expect(own.length).toBeGreaterThan(100);
+      // The floor is under the balls, and no point of the net is inside one (ShotPlayer.restIn).
+      expect(Math.min(...own.map((p) => p[1]!))).toBeLessThan(NET_FLOOR);
+      for (let k = 0; k < 3; k++) {
+        const a = (k * 2 * Math.PI) / 3;
+        const bx = cx + Math.cos(a) * 1.15 * R;
+        const bz = cz + Math.sin(a) * 1.15 * R;
+        const by = NET_FLOOR + R;
+        const nearest = Math.min(...own.map(([x, y, z]) => Math.hypot(x! - bx, y! - by, z! - bz)));
+        expect(nearest).toBeGreaterThan(R - 0.0005);
       }
     }
   });

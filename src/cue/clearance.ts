@@ -30,8 +30,10 @@ const MARGIN = 0.0015;
 const MAX_DRAW = 0.25;
 /** Spacing of the points along the cue's path that are checked, metres. */
 const STEP = 0.005;
-/** The pocket leathers stand a little proud of the rail cap. */
+/** The pocket leathers stand a little proud of the rail cap, and the side pockets' stand out past
+ * its edge (blender/scripts/table.py). */
 const LEATHER = 0.0015;
+const LEATHER_OUT = 0.04;
 
 /** The cue's outline: (distance from the tip, radius), from the tip to the butt. */
 const OUTLINE: readonly (readonly [number, number])[] = (() => {
@@ -54,13 +56,14 @@ export function cueRadius(s: number): number {
 
 /**
  * Height of the table's top at (x, y): the cloth inside the cushion noses, the cushion's top, the
- * rail cap out to its edge, and nothing beyond (−∞). Rails are taken as running through the
- * pockets too, which is never lower than the table really is.
+ * rail cap out to its edge (and as far as the side pockets' leathers stand out past it), and
+ * nothing beyond (−∞). Rails and leathers are taken as running all round the table, which is never
+ * lower than the table really is.
  */
 export function tableHeight(spec: TableSpec, x: number, y: number): number {
   const u = Math.max(-x, x - spec.W, -y, y - spec.L);
   if (u <= 0) return 0;
-  if (u > spec.railWidth) return -Infinity;
+  if (u > spec.railWidth + LEATHER_OUT) return -Infinity;
   if (u >= spec.cushionWidth) return spec.railHeight + LEATHER;
   const top = cushionTop(spec);
   for (let i = 1; i < top.length; i++) {

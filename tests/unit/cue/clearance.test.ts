@@ -132,7 +132,9 @@ describe('the table and cue outlines', () => {
     expect(tableHeight(spec, spec.W / 2, spec.L / 2)).toBe(0);
     expect(tableHeight(spec, -1e-9, 1)).toBeCloseTo(spec.noseHeight, 6);
     expect(tableHeight(spec, -spec.cushionWidth - 0.01, 1)).toBeGreaterThanOrEqual(spec.railHeight);
-    expect(tableHeight(spec, -spec.railWidth - 0.001, 1)).toBe(-Infinity);
+    // The side pockets' leathers stand up to 4 cm out past the rail's edge.
+    expect(tableHeight(spec, -spec.railWidth - 0.03, 1)).toBeGreaterThanOrEqual(spec.railHeight);
+    expect(tableHeight(spec, -spec.railWidth - 0.041, 1)).toBe(-Infinity);
   });
 
   it('widens the cue from the tip to the butt cap', () => {
