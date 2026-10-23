@@ -859,6 +859,7 @@ export class UiRoot {
     return {
       name: state.setup.names[seat],
       score: state.score[seat],
+      race: state.setup.race,
       group,
       onTable,
       active:

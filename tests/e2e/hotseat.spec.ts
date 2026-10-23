@@ -84,8 +84,11 @@ test('the 8 waits for a called pocket, and a marker over each pocket calls it', 
   const marks = page.locator('.pocket-mark');
   await expect(marks).toHaveCount(6);
   await expect(marks.first()).toBeVisible();
-  // The card shows the 8 at the end of the cleared group.
-  await expect(page.getByTestId('player-0').locator('.ball-glyph[title="8"]')).toHaveCount(1);
+  // The card rings the 8, at the end of the cleared group, as the ball to shoot.
+  await expect(page.getByTestId('player-0').locator('.ball-glyph.target[title="8"]')).toHaveCount(
+    1,
+  );
+  await expect(page.getByTestId('player-0').locator('.ball-glyph.potted')).toHaveCount(7);
 
   // No shot without a call.
   await page.keyboard.press('Space');
