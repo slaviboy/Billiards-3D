@@ -48,7 +48,9 @@ surface measured between the cushion noses**, not the outside of the frame.
 | Rail width, including cushion | 4–7½ in | [S] 1 §6; we use 5½ in for the 9-ft and 5 in for the 7-ft [A] |
 | Rail top above the bed | about 1¾ in (rails 32.25 in and slate 30.5 in above the floor on a Gold Crown VI) | [s] 8; we use 1¾ in [A] |
 | Overall size of a commercial 9-ft table | about 114.6 × 64.75 in (Gold Crown VI) | [s] 8 — consistent with 100 × 50 in plus about 7.3 in of rail on each side |
-| Leg (leveller) centres | about 79.25 × 46.125 in on a Gold Crown VI | [s] 8; used only for proportion [A] |
+| Leg (leveller) centres | about 79.25 × 46.125 in on a Gold Crown VI | [s] 8; not used: the legs stand where the photographs of section 7 put them [A] |
+| Frame | the apron 17 cm deep below the rail cap; a 13 cm square block 15 cm tall under it at each leg | [A] proportions from the owner's photographs (section 7) |
+| Legs | turned: a collar and a bead under the block, an urn's swelling, a ringed neck, a taper with nine flutes, a moulded foot; along the long sides at the corners, and under the side pockets of the 9-ft table (six legs; four on the 7-ft) | [A] after the owner's photographs (section 7) |
 
 ### 2.3 Cushions
 
@@ -183,6 +185,10 @@ published from this repository.
 | 7.3 | `File:Billard_Break_Shot.jpg` | Public domain | Kucharek | Break-shot motion |
 | 7.4 | `File:Billiard_table.JPG` | CC BY-SA 3.0 | מתניה | Home-table construction: wood rails with dot sights, apron, drop pockets with shields and cups, tapered legs |
 | 7.5 | `File:Multi_Colour_Pool_Balls_in_Triangle_(14473335876).jpg` | CC BY 2.0 | Stuart Kerr | Rack, colours |
+
+The owner also supplied five photographs of full-size tables (kept in `docs/reference/` as
+`owner-table-*.jpg`, never published): turned legs with fluted tapers under square blocks, and
+leather pocket covers over drop pockets with nets. The frame, legs and pockets follow them.
 
 The models are original, made from the dimensions above. No image was traced, and no asset was
 taken from any game.

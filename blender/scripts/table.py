@@ -33,8 +33,13 @@ import materials
 
 SLATE = 0.0254
 APRON_TOP = -0.045
-APRON_BOTTOM = -0.17
+APRON_BOTTOM = -0.215
 CUP_DEPTH = 0.115
+# The apron's face, set back from the rail cap's edge.
+APRON_INSET = 0.004
+# The square block at the top of each leg, below the apron.
+BLOCK = 0.13
+BLOCK_HEIGHT = 0.15
 
 
 def load(size):
@@ -222,7 +227,8 @@ def build(size, collection_name=None):
     link(spot, collection, ["spot"])
 
     # The apron below the rails.
-    apron = slab("apron-outer", -W / 2 - rw + 0.004, -L / 2 - rw + 0.004, W / 2 + rw - 0.004, L / 2 + rw - 0.004,
+    apron = slab("apron-outer", -W / 2 - rw + APRON_INSET, -L / 2 - rw + APRON_INSET, W / 2 + rw - APRON_INSET,
+                 L / 2 + rw - APRON_INSET,
                  APRON_BOTTOM, APRON_TOP + 0.001)
     hollow = slab("apron-inner", -W / 2 - rw + 0.03, -L / 2 - rw + 0.03, W / 2 + rw - 0.03, L / 2 + rw - 0.03,
                   APRON_BOTTOM - 0.01, APRON_TOP + 0.01)
@@ -230,24 +236,22 @@ def build(size, collection_name=None):
     apron.name = f"{size}-apron"
     link(apron, collection, ["apron-wood"])
 
-    # Tapered legs: six under a 9-ft table, four under a 7-ft one; levelling feet below.
+    # Turned legs under square blocks, along the long sides: at the corners, where the corner's
+    # curve ends, and (on a 9-ft table) under the side pockets.
     floor = -geo["bedHeight"]
-    lx = W / 2 + rw - 0.13
-    ly = L / 2 + rw - 0.26
+    corner = geo["pockets"][0]["center"]
+    lx = W / 2 + rw - APRON_INSET - BLOCK / 2
+    ly = L / 2 - corner[1] - BLOCK / 2
     spots = [(sx * lx, sy * ly) for sx in (-1, 1) for sy in (-1, 1)]
     if size == "9ft":
         spots += [(-lx, 0.0), (lx, 0.0)]
-    leg_parts, feet = [], []
+    leg_parts = []
     for i, (x, y) in enumerate(spots):
-        leg = leg_mesh(f"leg-{i}", x, y, APRON_BOTTOM + 0.002, floor + 0.012)
-        leg_parts.append(leg)
-        feet.append(common.cylinder(f"foot-{i}", 0.026, 0.012, location=(x, y, floor + 0.006), segments=24))
+        leg_parts.append(leg_block(f"block-{i}", x, y))
+        leg_parts.append(turned_leg(f"leg-{i}", x, y, floor, APRON_BOTTOM - BLOCK_HEIGHT))
     legs = common.join(leg_parts[0], leg_parts[1:])
     legs.name = f"{size}-legs"
     link(legs, collection, ["leg-wood"])
-    feet = common.join(feet[0], feet[1:])
-    feet.name = f"{size}-feet"
-    link(feet, collection, ["metal"])
 
     for obj in collection.objects:
         # Positions baked into the meshes: every part sits at the origin, in the table's frame.
@@ -279,12 +283,90 @@ def ring_lathe(name, profile, steps=48):
     return obj
 
 
-def leg_mesh(name, x, y, top, bottom):
-    """A square leg tapering from 11 cm at the top to 8 cm at the foot."""
-    a, b = 0.055, 0.04
-    verts = [
-        (x - a, y - a, top), (x + a, y - a, top), (x + a, y + a, top), (x - a, y + a, top),
-        (x - b, y - b, bottom), (x + b, y - b, bottom), (x + b, y + b, bottom), (x - b, y + b, bottom),
+def stacked_rings(name, rings, closed=True):
+    """A solid from rings of points stacked top to bottom (each ring the same length, in order
+    around), capped at both ends with a point in the middle of the end rings."""
+    n = len(rings[0])
+    verts = [p for ring in rings for p in ring]
+    faces = []
+    for i in range(len(rings) - 1):
+        for j in range(n):
+            k = (j + 1) % n
+            faces.append((i * n + j, i * n + k, (i + 1) * n + k, (i + 1) * n + j))
+    if closed:
+        for ring, base in ((rings[0], 0), (rings[-1], (len(rings) - 1) * n)):
+            cx = sum(p[0] for p in ring) / n
+            cy = sum(p[1] for p in ring) / n
+            verts.append((cx, cy, ring[0][2]))
+            centre = len(verts) - 1
+            faces.extend((base + j, centre, base + (j + 1) % n) for j in range(n))
+    obj = mesh_object(name, verts, faces)
+    bm = bmesh.new()
+    bm.from_mesh(obj.data)
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    bm.to_mesh(obj.data)
+    bm.free()
+    return obj
+
+
+def leg_block(name, x, y):
+    """The square block a leg is turned from, below the apron, its lower edge chamfered and
+    stepped in to the turning."""
+    bottom = APRON_BOTTOM - BLOCK_HEIGHT
+    a = BLOCK / 2
+    profile = [
+        (a, APRON_BOTTOM + 0.002), (a, bottom + 0.018), (a - 0.007, bottom + 0.009),
+        (a - 0.012, bottom + 0.009), (a - 0.012, bottom),
     ]
-    faces = [(3, 2, 1, 0), (4, 5, 6, 7), (0, 1, 5, 4), (1, 2, 6, 5), (2, 3, 7, 6), (3, 0, 4, 7)]
-    return mesh_object(name, verts, faces)
+    corners = ((-1, -1), (1, -1), (1, 1), (-1, 1))
+    return stacked_rings(name, [[(x + sx * h, y + sy * h, z) for sx, sy in corners] for h, z in profile])
+
+
+# The turned leg, after the photographs of real tables (docs/visual-research.md, section 2.2): a
+# collar and a bead under the block, an urn's swelling, a ringed neck, a long fluted taper and a
+# moulded foot. (radius, height above the floor) for a leg 0.462 m long, scaled to fit.
+LEG_LENGTH = 0.462
+LEG = [
+    # Collar, cove and bead under the block.
+    (0.050, 0.462), (0.057, 0.457), (0.057, 0.446), (0.048, 0.440), (0.043, 0.432), (0.042, 0.427),
+    (0.046, 0.423), (0.049, 0.419), (0.049, 0.415), (0.046, 0.411),
+    # The urn.
+    (0.048, 0.405), (0.054, 0.394), (0.059, 0.380), (0.063, 0.362), (0.064, 0.348), (0.062, 0.330),
+    (0.057, 0.312), (0.050, 0.298), (0.043, 0.286), (0.039, 0.278),
+    # Neck, ring and the step onto the taper.
+    (0.038, 0.274), (0.046, 0.269), (0.046, 0.260), (0.050, 0.255), (0.053, 0.249), (0.052, 0.242),
+    # The taper, fluted.
+    *((0.052 - 0.016 * i / 9, 0.242 - 0.142 * i / 9) for i in range(1, 10)),
+    # Ring, cove, the foot's swelling, a bead and the toe.
+    (0.041, 0.095), (0.041, 0.086), (0.037, 0.081), (0.042, 0.071), (0.047, 0.061), (0.050, 0.050),
+    (0.048, 0.039), (0.044, 0.031), (0.047, 0.025), (0.047, 0.012), (0.043, 0.005), (0.041, 0.0),
+]
+LEG_STEPS = 36
+FLUTES = 9
+FLUTE_DEPTH = 0.004
+FLUTED = (0.108, 0.234)
+
+
+def turned_leg(name, x, y, floor, top):
+    """The turned part of a leg, from the floor up to `top`, its taper fluted."""
+    scale = (top - floor) / LEG_LENGTH
+    groove = [0.0, 0.75, 1.0, 0.75]
+    per = LEG_STEPS // FLUTES
+    low, high = FLUTED[0] * scale, FLUTED[1] * scale
+
+    def smooth(e0, e1, v):
+        t = min(1.0, max(0.0, (v - e0) / (e1 - e0)))
+        return t * t * (3 - 2 * t)
+
+    rings = []
+    for r, h in LEG:
+        h *= scale
+        # The flutes stop with rounded ends a little inside the taper.
+        depth = FLUTE_DEPTH * smooth(low, low + 0.014, h) * (1 - smooth(high - 0.014, high, h))
+        ring = []
+        for j in range(LEG_STEPS):
+            a = 2 * math.pi * j / LEG_STEPS
+            rr = r - depth * groove[(j % per) * len(groove) // per]
+            ring.append((x + rr * math.cos(a), y + rr * math.sin(a), floor + h))
+        rings.append(ring)
+    return stacked_rings(name, rings)
