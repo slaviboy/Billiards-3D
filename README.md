@@ -4,7 +4,7 @@ A realistic 3D 8-ball game for the browser. Play on your own, against a friend o
 or against a friend online with voice and video, on a 9-foot tournament table or a 7-foot bar
 table, seen in 3D or straight from above.
 
-![A match in the 3D view](docs/screenshots/game-3d.jpg)
+![A match in the 3D view, with the menu bar along the top and the players' cards beside the table](docs/screenshots/game-3d.jpg)
 
 ## What is in it
 
@@ -38,7 +38,7 @@ table, seen in 3D or straight from above.
 
 | Top view | On a phone |
 |---|---|
-| ![The top view](docs/screenshots/top-view.jpg) | ![On a phone](docs/screenshots/phone.jpg) |
+| ![The top view](docs/screenshots/top-view.jpg) | ![On a phone, the cards small in the top bar](docs/screenshots/phone.jpg) |
 
 ## Playing
 
