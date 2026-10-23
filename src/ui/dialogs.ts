@@ -233,6 +233,9 @@ export function settingsDialog(store: Store<Settings>): Promise<void> {
     volume.setAttribute('aria-label', 'Volume');
     volume.addEventListener('input', () => set({ volume: Number(volume.value) / 100 }));
     const [left] = switchRow('Controls on the left', s.leftHanded, (on) => set({ leftHanded: on }));
+    const [large] = switchRow('Large player cards, for video calls', s.largeCards, (on) =>
+      set({ largeCards: on }),
+    );
     const [keepZoom] = switchRow('Keep the zoom while turning the view', s.keepZoom, (on) =>
       set({ keepZoom: on }),
     );
@@ -251,6 +254,7 @@ export function settingsDialog(store: Store<Settings>): Promise<void> {
       group(
         'Screen',
         left,
+        large,
         field('Graphics (takes effect when the page reloads)', quality.element),
       ),
       group('You', field('Name', name)),

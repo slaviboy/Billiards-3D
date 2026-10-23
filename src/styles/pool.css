@@ -10,9 +10,9 @@
  */
 
 /*
- * The game's own layout over the table: the players' cards along the top, the power bar on the
- * side, the dock along the bottom, the pocket markers and the notes; and the game's dialogs. The
- * tokens and the common parts are in modern.css.
+ * The game's own layout over the table: the players' cards along the top (or large, beside the
+ * table), the power bar on the side, the dock along the bottom, the pocket markers and the notes;
+ * and the game's dialogs. The tokens and the common parts are in modern.css.
  */
 :root {
   --ui-scale: 1;
@@ -445,10 +445,10 @@
     cursor: default;
   }
 
-  /* Notes after a shot, under the cards. */
+  /* Notes after a shot, under the cards (UiRoot measures where the top's parts end). */
   .toasts {
     position: fixed;
-    top: calc(max(0.8rem, env(safe-area-inset-top)) + 7.4rem);
+    top: calc(var(--hud-top, 7.4rem) + 0.6rem);
     left: 50%;
     transform: translateX(-50%);
     display: grid;
@@ -593,6 +593,281 @@
       white-space: normal;
       font-size: 1.25rem;
       line-height: 1.25;
+    }
+  }
+
+  /*
+   * Large cards, for video calls. They stand on their own on the side away from the power bar, a
+   * camera's picture across the top of each like a call's; the top bar keeps the race and the
+   * buttons, in the corner over the power bar, and the dock and the notes centre in the space
+   * left. On a phone held upright they stand side by side under the buttons instead (the query is
+   * kept in step with PHONE_UPRIGHT in UiRoot.ts).
+   */
+  .pool-ui {
+    --edge-top: max(0.8rem, env(safe-area-inset-top));
+    --edge-bottom: max(0.8rem, env(safe-area-inset-bottom));
+    --edge-left: max(0.8rem, env(safe-area-inset-left));
+    --edge-right: max(0.8rem, env(safe-area-inset-right));
+    --side: clamp(24rem, 24vw, 30rem);
+    /* A large card's height without its picture, so that two pictures fit the screen's height. */
+    --card-info: 10.8rem;
+  }
+
+  .pool-ui.large-cards .hud-top {
+    left: auto;
+    right: var(--edge-right);
+    width: auto;
+    transform: none;
+  }
+
+  .pool-ui.large-cards.left-handed .hud-top {
+    left: var(--edge-left);
+    right: auto;
+  }
+
+  .hud-players {
+    position: fixed;
+    top: var(--edge-top);
+    left: var(--edge-left);
+    width: var(--side);
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+    pointer-events: none;
+  }
+
+  .hud-players[hidden] {
+    display: none;
+  }
+
+  .pool-ui.left-handed .hud-players {
+    left: auto;
+    right: var(--edge-right);
+  }
+
+  .pool-ui.large-cards .hud-dock {
+    left: calc(var(--edge-left) + var(--side) + 0.8rem);
+    right: var(--edge-right);
+    width: auto;
+    max-width: 64rem;
+    margin: 0 auto;
+    transform: none;
+  }
+
+  .pool-ui.large-cards.left-handed .hud-dock {
+    left: var(--edge-left);
+    right: calc(var(--edge-right) + var(--side) + 0.8rem);
+  }
+
+  .pool-ui.large-cards .toasts {
+    left: calc(50% + (var(--side) + 0.8rem) / 2);
+  }
+
+  .pool-ui.large-cards.left-handed .toasts {
+    left: calc(50% - (var(--side) + 0.8rem) / 2);
+  }
+
+  /* The card: the picture, then the clock's ring and initial, the name and the racks won, then
+   * the balls and the switches for the camera and the sound. */
+  .player-card.large {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      'avatar name score'
+      'balls balls media';
+    align-items: center;
+    gap: 0.7rem 1rem;
+    padding: 1rem;
+    border-radius: var(--m-radius);
+    background: var(--m-surface);
+    box-shadow: var(--m-shadow);
+    text-align: left;
+    pointer-events: auto;
+  }
+
+  .player-card.large[hidden] {
+    display: none;
+  }
+
+  .player-card.large.video-on {
+    grid-template-areas:
+      'video video video'
+      'avatar name score'
+      'balls balls media';
+  }
+
+  .player-card.large.active {
+    background: linear-gradient(var(--m-gold-soft), var(--m-gold-soft)), var(--m-surface);
+    box-shadow:
+      0 0 0 1px rgba(214, 179, 106, 0.25),
+      0 0.6rem 2rem rgba(214, 179, 106, 0.12),
+      var(--m-shadow);
+  }
+
+  .player-card.large .player-text {
+    display: contents;
+  }
+
+  .player-card.large .player-avatar {
+    grid-area: avatar;
+    width: 4.8rem;
+    height: 4.8rem;
+  }
+
+  .player-card.large .player-initial {
+    font-size: 1.9rem;
+  }
+
+  /* With a picture, the initial and the clock's ring stay beside the name. */
+  .player-card.large.video-on .player-initial {
+    display: grid;
+  }
+
+  .player-card.large .player-name {
+    grid-area: name;
+    font-size: 1.7rem;
+  }
+
+  .player-card.large .player-score {
+    grid-area: score;
+    font-size: 3rem;
+  }
+
+  .player-card.large .player-balls {
+    grid-area: balls;
+    justify-content: flex-start;
+    gap: 0.1rem;
+    min-height: 2.6rem;
+  }
+
+  .player-card.large .ball-glyph svg {
+    width: 1.7rem;
+    height: 1.7rem;
+  }
+
+  .player-card.large .card-media {
+    grid-area: media;
+    justify-self: end;
+  }
+
+  .player-card.large .m-media-btn.m-icon-btn,
+  .player-card.large .card-media-silent {
+    width: 3rem;
+    height: 3rem;
+  }
+
+  .player-card.large .m-media-btn.m-icon-btn svg,
+  .player-card.large .card-media-silent svg {
+    width: 1.8rem;
+    height: 1.8rem;
+  }
+
+  /* As tall as a 4:3 picture, or less where two would not fit the screen's height. */
+  .player-card.large .m-avatar-video {
+    grid-area: video;
+    position: static;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 4 / 3;
+    max-height: calc((100vh - 2.6rem) / 2 - var(--card-info) - 0.7rem);
+    max-height: calc((100dvh - 2.6rem) / 2 - var(--card-info) - 0.7rem);
+    border-radius: 1.1rem;
+  }
+
+  /* Phones on their side, and other short screens: tighter cards leave the pictures more room. */
+  @media (max-height: 500px) {
+    .pool-ui {
+      --card-info: 8.8rem;
+    }
+
+    .player-card.large {
+      gap: 0.5rem 0.8rem;
+      padding: 0.7rem;
+    }
+
+    .player-card.large .player-avatar {
+      width: 3.6rem;
+      height: 3.6rem;
+    }
+  }
+
+  /* Phones held upright: the two cards side by side under the buttons, the race beside them. */
+  @media (max-width: 640px) and (orientation: portrait) {
+    .hud-players,
+    .pool-ui.left-handed .hud-players {
+      top: calc(var(--edge-top) + 4.8rem);
+      left: var(--edge-left);
+      right: var(--edge-right);
+      width: auto;
+      flex-direction: row;
+      align-items: flex-start;
+      gap: 0.6rem;
+    }
+
+    .pool-ui.large-cards .race {
+      display: block;
+    }
+
+    .pool-ui.large-cards .hud-dock,
+    .pool-ui.large-cards.left-handed .hud-dock {
+      left: var(--edge-left);
+      right: var(--edge-right);
+      max-width: none;
+    }
+
+    .pool-ui.large-cards .toasts,
+    .pool-ui.large-cards.left-handed .toasts {
+      left: 50%;
+    }
+
+    .player-card.large {
+      flex: 1 1 0;
+      min-width: 0;
+      gap: 0.5rem 0.6rem;
+      padding: 0.7rem;
+    }
+
+    .player-card.large .player-avatar {
+      width: 3.6rem;
+      height: 3.6rem;
+    }
+
+    .player-card.large .player-initial {
+      font-size: 1.6rem;
+    }
+
+    .player-card.large .player-name {
+      font-size: 1.45rem;
+    }
+
+    .player-card.large .player-score {
+      min-width: 0;
+      font-size: 2.2rem;
+    }
+
+    .player-card.large .player-balls {
+      min-height: 2.2rem;
+    }
+
+    .player-card.large .ball-glyph svg {
+      width: 1.4rem;
+      height: 1.4rem;
+    }
+
+    .player-card.large .m-media-btn.m-icon-btn,
+    .player-card.large .card-media-silent {
+      width: 2.4rem;
+      height: 2.4rem;
+    }
+
+    .player-card.large .m-media-btn.m-icon-btn svg,
+    .player-card.large .card-media-silent svg {
+      width: 1.6rem;
+      height: 1.6rem;
+    }
+
+    .player-card.large .m-avatar-video {
+      max-height: 24vh;
     }
   }
 

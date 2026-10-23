@@ -12,7 +12,8 @@
 /*
  * Online play: its dialogs (the warning before connecting, with a real checkbox rather than a
  * switch for the age confirmation; the invitation link and its QR code), the connection's state
- * under the cards, and video and voice on the cards, small enough to stay out of the table's way.
+ * under the cards, and video and voice on the cards: small enough to stay out of the table's way,
+ * or across the top of large cards (their layout is in pool.css).
  */
 :root[data-ui='modern'] {
   .online-dialog {
@@ -167,10 +168,10 @@
     text-align: center;
   }
 
-  /* The connection, under the left end of the top bar. */
+  /* The connection, under the left end of the top bar (UiRoot measures where it ends). */
   .online-chip {
     position: fixed;
-    top: calc(max(0.8rem, env(safe-area-inset-top)) + 7.4rem);
+    top: calc(var(--hud-top, 7.4rem) + 0.6rem);
     left: max(0.8rem, calc(50% - 48rem));
     display: flex;
     align-items: center;
@@ -185,6 +186,17 @@
     color: var(--m-muted);
     font: 500 1.15rem var(--m-font);
     pointer-events: none;
+  }
+
+  /* With large cards (pool.css), under the buttons in their corner. */
+  .pool-ui.large-cards .online-chip {
+    left: auto;
+    right: var(--edge-right);
+  }
+
+  .pool-ui.large-cards.left-handed .online-chip {
+    left: var(--edge-left);
+    right: auto;
   }
 
   .online-chip[hidden] {
@@ -288,7 +300,6 @@
 
   @media (max-width: 640px) {
     .online-chip {
-      top: calc(max(0.8rem, env(safe-area-inset-top)) + 5.8rem);
       font-size: 1.05rem;
     }
 
@@ -296,6 +307,22 @@
     .card-media-silent {
       width: 2.2rem;
       height: 2.2rem;
+    }
+  }
+
+  /* Large cards on a phone held upright fill the width under the buttons: the chip goes beside
+   * the buttons, in the space they leave. */
+  @media (max-width: 640px) and (orientation: portrait) {
+    .pool-ui.large-cards .online-chip {
+      top: calc(var(--edge-top) + 0.85rem);
+      left: var(--edge-left);
+      right: auto;
+      max-width: calc(100vw - 20rem);
+    }
+
+    .pool-ui.large-cards.left-handed .online-chip {
+      left: auto;
+      right: var(--edge-right);
     }
   }
 }

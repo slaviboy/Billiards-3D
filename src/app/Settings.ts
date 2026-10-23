@@ -34,6 +34,11 @@ export interface Settings {
   readonly leftHanded: boolean;
   /** Turning the view keeps its zoom, instead of refitting the table to the screen at each angle. */
   readonly keepZoom: boolean;
+  /**
+   * The players' cards large, with room for a video call: beside the table, or in a row under the
+   * buttons on a phone held upright. Otherwise they are small, in the top bar.
+   */
+  readonly largeCards: boolean;
   /** The player's name (for two players on one device, the second name too). */
   readonly name: string;
   readonly name2: string;
@@ -52,6 +57,7 @@ export const DEFAULT_SETTINGS: Settings = {
   cloth: 'blueGreen',
   leftHanded: false,
   keepZoom: true,
+  largeCards: false,
   name: 'Player 1',
   name2: 'Player 2',
   table: '9ft',
@@ -85,6 +91,7 @@ export function sanitize(value: unknown): Settings {
     cloth: oneOf(v.cloth, Object.keys(CLOTHS) as ClothName[], d.cloth),
     leftHanded: typeof v.leftHanded === 'boolean' ? v.leftHanded : d.leftHanded,
     keepZoom: typeof v.keepZoom === 'boolean' ? v.keepZoom : d.keepZoom,
+    largeCards: typeof v.largeCards === 'boolean' ? v.largeCards : d.largeCards,
     name: name(v.name, d.name),
     name2: name(v.name2, d.name2),
     table: isTableSize(v.table) ? v.table : d.table,

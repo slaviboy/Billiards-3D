@@ -9,11 +9,12 @@
  * License, or (at your option) any later version. See the LICENSE file for the full terms.
  */
 
-// The interface over the table: the players' cards and the buttons along the top, the power bar
-// on one side, the dock with the spin, the fine aim and what is going on along the bottom, the
-// pocket markers for calling the 8, and the notes after each shot. It runs the keyboard, the shot
-// clock and the turns of a match on this device (decisions, the end of a rack, rematches), and
-// tells the camera which parts of the screen it covers, so the table is framed in the rest.
+// The interface over the table: the players' cards and the buttons along the top (or, with large
+// cards, the cards beside the table), the power bar on one side, the dock with the spin, the fine
+// aim and what is going on along the bottom, the pocket markers for calling the 8, and the notes
+// after each shot. It runs the keyboard, the shot clock and the turns of a match on this device
+// (decisions, the end of a rack, rematches), and tells the camera which parts of the screen it
+// covers, so the table is framed in the rest.
 
 import type { App } from '../app/App.ts';
 import type { MatchSetup, MatchState, ShotResult } from '../game/MatchController.ts';
@@ -50,6 +51,10 @@ const FOUL_TEXT: Record<Foul, string> = {
 
 const GROUP_NAME = ['', 'solids', 'stripes'] as const;
 
+/** Where large cards stand in a row under the buttons rather than beside the table; keep it in
+ * step with the same query in pool.css. */
+const PHONE_UPRIGHT = '(max-width: 640px) and (orientation: portrait)';
+
 function randomSeed(): string {
   const bytes = new Uint8Array(8);
   crypto.getRandomValues(bytes);
@@ -70,6 +75,8 @@ export class UiRoot {
   private readonly picker: PocketPicker;
   private readonly toasts = new Toasts();
   private readonly top: HTMLElement;
+  /** Where the cards stand when they are large. */
+  private readonly players: HTMLElement;
   private readonly dock: HTMLElement;
   /** The shot clock: which turn it is timing, and the seconds used. */
   private clock = { key: '', used: 0 };
@@ -108,6 +115,8 @@ export class UiRoot {
       iconButton(LINE_ICONS.menu, 'Menu (Esc)', () => void this.pause()),
     );
     this.top.append(this.cards[0].element, this.race, this.cards[1].element, buttons);
+    this.players = el('div', 'hud-players');
+    this.players.hidden = true;
 
     // The power bar along the side.
     this.power = new PowerBar({
@@ -180,6 +189,7 @@ export class UiRoot {
 
     this.element.append(
       this.top,
+      this.players,
       this.power.element,
       this.dock,
       this.toasts.element,
@@ -197,6 +207,7 @@ export class UiRoot {
     app.match.state.subscribe(() => this.render());
     app.settings.subscribe((settings) => {
       this.element.classList.toggle('left-handed', settings.leftHanded);
+      this.placeCards(settings.largeCards);
       this.render();
       this.measure();
     });
@@ -206,7 +217,9 @@ export class UiRoot {
     });
     window.addEventListener('keydown', (event) => this.onKey(event));
     const observer = new ResizeObserver(() => this.measure());
-    for (const part of [this.top, this.dock, this.power.element]) observer.observe(part);
+    for (const part of [this.top, this.players, this.dock, this.power.element]) {
+      observer.observe(part);
+    }
     window.addEventListener('resize', () => this.measure());
     setInterval(() => this.tick(), 100);
     this.render();
@@ -704,7 +717,25 @@ export class UiRoot {
     return `${name} to shoot`;
   }
 
-  /** Tells the camera how much of each edge the interface covers. */
+  /** The cards in the top bar, with the race between them, or large on their own. */
+  private placeCards(large: boolean): void {
+    const [first, second] = this.cards;
+    if (large) {
+      this.players.append(first.element, second.element);
+    } else {
+      this.race.before(first.element);
+      this.race.after(second.element);
+    }
+    this.players.hidden = !large;
+    this.element.classList.toggle('large-cards', large);
+    for (const card of this.cards) card.setLarge(large);
+  }
+
+  /**
+   * Tells the camera how much of each edge the interface covers, and the notes where the top's
+   * parts end. Large cards cover the side away from the power bar, or the top on a phone held
+   * upright.
+   */
   private measure(): void {
     const w = window.innerWidth;
     const h = window.innerHeight;
@@ -713,11 +744,20 @@ export class UiRoot {
     const power = this.power.element.getBoundingClientRect();
     const left = this.app.settings.get().leftHanded;
     const side = power.width > 0 ? (left ? power.right : w - power.left) : 0;
-    this.app.setInsets({
+    const insets = {
       top: Math.max(0, top.bottom),
       bottom: dock.height > 0 ? Math.max(0, h - dock.top) : 0,
       right: left ? 0 : side,
       left: left ? side : 0,
-    });
+    };
+    const players = this.players.getBoundingClientRect();
+    if (!this.players.hidden && players.width > 0) {
+      const inRow = window.matchMedia(PHONE_UPRIGHT).matches;
+      if (inRow) insets.top = Math.max(insets.top, players.bottom);
+      else if (left) insets.right = Math.max(0, w - players.left);
+      else insets.left = Math.max(0, players.right);
+    }
+    this.element.style.setProperty('--hud-top', `${Math.round(insets.top)}px`);
+    this.app.setInsets(insets);
   }
 }

@@ -9,10 +9,11 @@
  * License, or (at your option) any later version. See the LICENSE file for the full terms.
  */
 
-// A player's card at the top of the screen: the initial in a ring that runs down with the shot
-// clock, the name, the racks won, and the player's group as a row of balls, the pocketed ones
-// faded, with the 8 at the end once it is the player's to shoot. It glows while it is the player's
-// turn.
+// A player's card: the initial in a ring that runs down with the shot clock, the name, the racks
+// won, and the player's group as a row of balls, the pocketed ones faded, with the 8 at the end
+// once it is the player's to shoot. It glows while it is the player's turn. It is small, in the top
+// bar, with a camera's picture inside the round avatar; or large, on its own beside the table (in a
+// row on a phone held upright), with the picture across its top like a call's.
 
 import { BALL_COLORS, isStripe } from '../../balls/markings.ts';
 import type { Group, Seat } from '../../rules/types.ts';
@@ -41,14 +42,17 @@ export class PlayerCard {
   private readonly name: HTMLElement;
   private readonly score: HTMLElement;
   private readonly balls: HTMLElement;
+  private readonly avatar: HTMLElement;
   private readonly initial: HTMLElement;
   private readonly ring: SVGCircleElement;
   private last = '';
+  private video: HTMLVideoElement | null = null;
+  private large = false;
 
   constructor(seat: Seat) {
     this.element = el('div', `m-card player-card seat-${seat}`);
     this.element.dataset.testid = `player-${seat}`;
-    const avatar = el('div', 'player-avatar');
+    const avatar = (this.avatar = el('div', 'player-avatar'));
     avatar.innerHTML = `<svg viewBox="0 0 48 48" aria-hidden="true"><circle class="ring-track" cx="24" cy="24" r="21"/><circle class="ring-time" cx="24" cy="24" r="21" stroke-dasharray="${RING}" stroke-dashoffset="0"/></svg>`;
     this.ring = avatar.querySelector('.ring-time')!;
     this.initial = el('span', 'player-initial');
@@ -62,12 +66,29 @@ export class PlayerCard {
   }
 
   /**
-   * Online: the player's camera inside the round avatar, and the microphone, camera and speaker
-   * switches beside the score, so the top bar keeps its height.
+   * Online: the player's camera (inside the round avatar, so the top bar keeps its height, or across
+   * the top of a large card), and the microphone, camera and speaker switches beside the score.
    */
   attachMedia(video: HTMLVideoElement, controls: HTMLElement): void {
-    this.element.querySelector('.player-avatar')!.prepend(video);
+    this.video = video;
     this.score.before(controls);
+    this.placeVideo();
+  }
+
+  /** Large, on its own beside the table, or small, in the top bar (the layout is in pool.css). */
+  setLarge(on: boolean): void {
+    this.large = on;
+    this.element.classList.toggle('large', on);
+    this.placeVideo();
+  }
+
+  private placeVideo(): void {
+    const video = this.video;
+    const home = this.large ? this.element : this.avatar;
+    if (!video || video.parentElement === home) return;
+    home.prepend(video);
+    // A video moved in the page may stop (Safari); a live picture carries on.
+    if (video.srcObject) void video.play().catch(() => undefined);
   }
 
   /** Whether a picture shows in the avatar. */

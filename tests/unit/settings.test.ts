@@ -10,7 +10,8 @@
  */
 
 // The settings: a new player keeps the zoom while the view turns, and settings saved before that
-// was the default move over once with the zoom kept and everything else as it was.
+// was the default move over once with the zoom kept and everything else as it was. The players'
+// cards are small until large ones are chosen.
 
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_SETTINGS, loadSettings, saveSettings } from '../../src/app/Settings.ts';
@@ -50,5 +51,14 @@ describe('the settings', () => {
     const saved = storage();
     saveSettings({ ...DEFAULT_SETTINGS, keepZoom: false }, saved);
     expect(loadSettings(saved).keepZoom).toBe(false);
+  });
+
+  it('keep the cards small until large ones are chosen', () => {
+    expect(loadSettings(storage()).largeCards).toBe(false);
+    const saved = storage();
+    saveSettings({ ...DEFAULT_SETTINGS, largeCards: true }, saved);
+    expect(loadSettings(saved).largeCards).toBe(true);
+    const damaged = storage({ 'pool.settings.v2': JSON.stringify({ largeCards: 'yes' }) });
+    expect(loadSettings(damaged).largeCards).toBe(false);
   });
 });
