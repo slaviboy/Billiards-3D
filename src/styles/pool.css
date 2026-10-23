@@ -628,10 +628,10 @@
   /*
    * Large cards, for video calls. They stand on their own on the side away from the power bar, a
    * camera's picture across the top of each like a call's; the top bar keeps the race and the
-   * buttons, in the corner over the power bar (or, with the menu bar, runs the whole width over
-   * the cards), and the dock and the notes centre in the space left. On a phone held upright they
-   * stand side by side under the top bar instead (the query is kept in step with PHONE_UPRIGHT in
-   * UiRoot.ts, which also sets --bar-bottom, where the top bar ends).
+   * buttons, in the corner over the power bar (or, with the menu bar, holds it too, in the corner
+   * over the cards), and the dock and the notes centre in the space left. On a phone held upright
+   * they stand side by side under the top bar instead (the query is kept in step with
+   * PHONE_UPRIGHT in UiRoot.ts, which also sets --bar-bottom, where the top bar ends).
    */
   .pool-ui {
     --edge-top: max(0.8rem, env(safe-area-inset-top));
@@ -661,14 +661,22 @@
     --players-top: calc(var(--bar-bottom, 6rem) + 0.8rem);
   }
 
-  .pool-ui.large-cards.menu-bar .hud-top,
-  .pool-ui.large-cards.menu-bar.left-handed .hud-top {
+  /* With the menu bar the top bar is no wider than what it holds, in the corner over the cards. */
+  .pool-ui.large-cards.menu-bar .hud-top {
     left: var(--edge-left);
+    right: auto;
+    max-width: calc(100vw - var(--edge-left) - var(--edge-right));
+  }
+
+  .pool-ui.large-cards.menu-bar.left-handed .hud-top {
+    left: auto;
     right: var(--edge-right);
   }
 
+  /* The race stands apart from the menus, as the game's name does. */
   .pool-ui.large-cards.menu-bar .race {
-    margin-left: auto;
+    padding-left: 1.2rem;
+    border-left: 1px solid var(--m-line);
   }
 
   .hud-players {

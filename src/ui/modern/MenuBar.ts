@@ -13,7 +13,7 @@
 // one is open, hovering another switches to it (on a touch screen, tapping it does). Alt+letter
 // opens a menu, the arrow keys move through items and submenus, Enter chooses and Escape closes.
 // Labels mark their access key with "&" ("&Game"). Check marks, shortcuts and submenu arrows are
-// drawn as icons and key caps.
+// drawn as icons and key caps. Menus keep on the screen: near its right edge they open leftward.
 
 import { LINE_ICONS } from '../icons.ts';
 
@@ -31,6 +31,9 @@ export interface Menu {
   readonly label: string;
   readonly items: () => MenuItem[];
 }
+
+/** The least room between a menu and the window's edge, in CSS pixels. */
+const EDGE = 8;
 
 function accessKey(label: string): string | undefined {
   const i = label.indexOf('&');
@@ -132,6 +135,9 @@ export class MenuBar {
     list.style.left = `${rect.left}px`;
     list.style.top = `${rect.bottom}px`;
     document.body.append(list);
+    // A bar near the right edge (with the controls on the left): the menu moves left to fit.
+    const over = list.getBoundingClientRect().right - (window.innerWidth - EDGE);
+    if (over > 0) list.style.left = `${Math.max(EDGE, rect.left - over)}px`;
     button.setAttribute('aria-expanded', 'true');
     button.classList.add('open');
     this.open = { index, list };
@@ -195,6 +201,11 @@ export class MenuBar {
     sub.style.left = `${rect.right - 2}px`;
     sub.style.top = `${rect.top - 3}px`;
     document.body.append(sub);
+    // Without the room on the right, it opens to the left of its entry.
+    if (sub.getBoundingClientRect().right > window.innerWidth - EDGE) {
+      sub.classList.add('leftward');
+      sub.style.left = `${rect.left + 2 - sub.offsetWidth}px`;
+    }
     this.open.sub = sub;
     this.open.subEntry = entry;
     sub.addEventListener('pointerdown', (event) => event.stopPropagation());

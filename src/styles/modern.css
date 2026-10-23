@@ -301,6 +301,10 @@
     margin: -0.3rem 0 0 0.8rem;
   }
 
+  .menu.submenu.leftward {
+    margin-left: -0.8rem;
+  }
+
   .menu-entry {
     display: grid;
     grid-template-columns: 2rem 1fr auto;
