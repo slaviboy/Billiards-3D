@@ -49,9 +49,9 @@ or a computer the menu bar along the top (Game, View, Options, Help) holds all o
 and the settings; on a phone they are behind the menu button, or Settings can show the bar there
 too. Escape opens the pause menu everywhere.
 
-- **Aim** by dragging on the cloth (with a finger, sweep round the cue ball, or, with "Aim from the
-  cue ball at the point a finger touches" in Settings, touch where to aim), or with Shift and the
-  arrow keys; `,` and `.` aim finely.
+- **Aim** by dragging on the cloth (a finger points the cue from the cue ball at where it touches,
+  or, with "Aim from the cue ball at the point a finger touches" off in Settings, turns the aim as
+  it sweeps round the cue ball), or with Shift and the arrow keys; `,` and `.` aim finely.
 - **Shoot** by pulling the power bar down and letting go, or set the power with Shift and ↑ ↓ and
   press Space. Each shot starts from no power; taking a pull back to the top of the bar and
   letting go there shoots nothing, so you can stop, aim again and pull again.

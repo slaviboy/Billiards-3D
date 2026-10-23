@@ -100,43 +100,47 @@ for (const [name, width, height] of [
       await expect(page.locator('.dialog')).toHaveCount(0);
     });
 
-    test('a finger aims at the point it touches once Settings says so', async ({ page }) => {
+    test('a finger aims at the point it touches, unless Settings says not', async ({ page }) => {
       await page.goto('./?menu=0');
       await expect(page.locator('#app[data-ready="true"]')).toBeAttached();
       await settle(page);
       const aim = () => page.evaluate(() => window.__poolDebug!.aim().heading);
-      // A point of the cloth off the cue ball's line, clear of the interface.
       const cue = await page.evaluate(() => window.__poolDebug!.cueBall());
-      const target = { x: 1.27 / 4, y: 2.54 / 2 };
-      const at = await page.evaluate(
-        ([x, y]) => window.__poolDebug!.toClient(x!, y!, 0.028575),
-        [target.x, target.y],
-      );
-      expect(
-        await page.evaluate(
-          ([x, y]) => document.elementFromPoint(x!, y!)?.classList.contains('scene-canvas'),
-          [at.x, at.y],
-        ),
-      ).toBe(true);
-      const heading = Math.atan2(target.y - cue.y, target.x - cue.x);
+      /** A point of the cloth on the screen, clear of the interface, and the heading to it. */
+      const point = async (x: number, y: number) => {
+        const at = await page.evaluate(
+          ([x, y]) => window.__poolDebug!.toClient(x!, y!, 0.028575),
+          [x, y],
+        );
+        expect(
+          await page.evaluate(
+            ([x, y]) => document.elementFromPoint(x!, y!)?.classList.contains('scene-canvas'),
+            [at.x, at.y],
+          ),
+        ).toBe(true);
+        return { ...at, heading: Math.atan2(y - cue.y, x - cue.x) };
+      };
 
-      // By default a touch alone does not aim: the finger turns the aim as it sweeps.
-      const before = await aim();
-      expect(Math.abs(before - heading)).toBeGreaterThan(0.1);
-      await page.touchscreen.tap(at.x, at.y);
-      expect(await aim()).toBe(before);
+      // By default a touch points the cue from the cue ball at the point touched.
+      const first = await point(1.27 / 4, 2.54 / 2);
+      expect(Math.abs((await aim()) - first.heading)).toBeGreaterThan(0.1);
+      await page.touchscreen.tap(first.x, first.y);
+      expect(await aim()).toBeCloseTo(first.heading, 3);
 
+      // Turned off, a touch alone does not aim: the finger turns the aim as it sweeps.
       await page.getByRole('button', { name: 'Menu (Esc)' }).tap();
       await page.locator('.pause-item[data-choice="settings"]').tap();
       await page
         .getByRole('switch', { name: 'Aim from the cue ball at the point a finger touches' })
-        .setChecked(true);
+        .setChecked(false);
       await page.keyboard.press('Escape');
       await expect(page.locator('.dialog')).toHaveCount(0);
-      await page.touchscreen.tap(at.x, at.y);
-      expect(await aim()).toBeCloseTo(heading, 3);
+      const second = await point((3 * 1.27) / 4, 2.54 / 2);
+      const before = await aim();
+      await page.touchscreen.tap(second.x, second.y);
+      expect(await aim()).toBe(before);
       expect(await page.evaluate(() => localStorage.getItem('pool.settings.v2'))).toContain(
-        '"touchAim":true',
+        '"aimAtTouch":false',
       );
     });
 

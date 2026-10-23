@@ -96,14 +96,21 @@ describe('the settings', () => {
 });
 
 describe('aiming at the point a finger touches', () => {
-  it('is off by default on every device, and stays on once turned on', () => {
-    expect(loadSettings(storage(), DEFAULT_SETTINGS).touchAim).toBe(false);
-    expect(loadSettings(storage(), PHONE_SETTINGS).touchAim).toBe(false);
+  it('is on by default on every device, and stays off once turned off', () => {
+    expect(loadSettings(storage(), DEFAULT_SETTINGS).aimAtTouch).toBe(true);
+    expect(loadSettings(storage(), PHONE_SETTINGS).aimAtTouch).toBe(true);
     const saved = storage();
-    saveSettings({ ...DEFAULT_SETTINGS, touchAim: true }, saved);
-    expect(loadSettings(saved, PHONE_SETTINGS).touchAim).toBe(true);
-    const damaged = storage({ 'pool.settings.v2': JSON.stringify({ touchAim: 'yes' }) });
-    expect(loadSettings(damaged, PHONE_SETTINGS).touchAim).toBe(false);
+    saveSettings({ ...DEFAULT_SETTINGS, aimAtTouch: false }, saved);
+    expect(loadSettings(saved, PHONE_SETTINGS).aimAtTouch).toBe(false);
+    const damaged = storage({ 'pool.settings.v2': JSON.stringify({ aimAtTouch: 'no' }) });
+    expect(loadSettings(damaged, PHONE_SETTINGS).aimAtTouch).toBe(true);
+  });
+
+  it('comes on where a build that had it off by default saved it off', () => {
+    const before = storage({
+      'pool.settings.v2': JSON.stringify({ name: 'Ada', touchAim: false }),
+    });
+    expect(loadSettings(before, PHONE_SETTINGS)).toMatchObject({ name: 'Ada', aimAtTouch: true });
   });
 });
 

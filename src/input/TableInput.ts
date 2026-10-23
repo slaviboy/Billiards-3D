@@ -12,10 +12,10 @@
 // Pointer and touch input on the table. What a drag does depends on where it starts, as on the
 // chess board:
 //
-//   the cloth        aims: with a mouse the cue points at the pointer; with a finger the aim turns
-//                    as far as the finger sweeps round the cue ball, so the finger never hides what
-//                    it aims at, or, if the player chose so, the cue points at the finger as at
-//                    the mouse. On the cue ball, when it is in hand, the drag moves it instead.
+//   the cloth        aims: the cue points at the pointer, or at the finger (unless the player
+//                    chose that the aim turn as far as the finger sweeps round the cue ball, so
+//                    that the finger never hides what it aims at). On the cue ball, when it is in
+//                    hand, the drag moves it instead.
 //                    While it is not this player's turn, the cloth turns the view.
 //   a rail's corner  turns and tilts the view (so does the floor round the table).
 //   a rail's side    pans: the grabbed point of the table stays under the pointer.

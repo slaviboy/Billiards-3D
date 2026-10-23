@@ -638,7 +638,7 @@ export class UiRoot {
 
   /** The guide's parts, as the screen shows them now: what each is and how to use it. */
   private guideParts(): GuidePart[] {
-    const { largeCards, leftHanded, menuBar, touchAim } = this.app.settings.get();
+    const { largeCards, leftHanded, menuBar, aimAtTouch } = this.app.settings.get();
     // The box round whichever of these elements show (none: no part).
     const around =
       (...elements: (HTMLElement | null)[]) =>
@@ -696,7 +696,7 @@ export class UiRoot {
       {
         target: cueBall,
         title: 'Aim and the view',
-        text: `Drag on the cloth to aim (with a finger, ${touchAim ? 'the cue points at it' : 'sweep round the cue ball'}). Drag a rail's corner to turn the view, its side to pan; the wheel zooms.`,
+        text: `Drag on the cloth to aim (with a finger, ${aimAtTouch ? 'the cue points at it' : 'sweep round the cue ball'}). Drag a rail's corner to turn the view, its side to pan; the wheel zooms.`,
         side: 'right',
       },
       {
@@ -738,7 +738,7 @@ export class UiRoot {
     const sep: MenuItem = { separator: true };
     const toggle = (
       label: string,
-      key: 'keepZoom' | 'touchAim' | 'largeCards' | 'leftHanded' | 'sound' | 'hints',
+      key: 'keepZoom' | 'aimAtTouch' | 'largeCards' | 'leftHanded' | 'sound' | 'hints',
       shortcut?: string,
     ): MenuItem => ({
       label,
@@ -822,7 +822,7 @@ export class UiRoot {
                 ['off', 'Off'],
               ]),
           },
-          toggle('Aim at the &point a finger touches', 'touchAim'),
+          toggle('Aim at the &point a finger touches', 'aimAtTouch'),
           toggle('&Keep the zoom while turning', 'keepZoom'),
           sep,
           toggle('Large player &cards', 'largeCards'),
