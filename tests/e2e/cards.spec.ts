@@ -16,6 +16,7 @@
 // cards, and a picture playing goes with them.
 
 import { expect, test, type Page } from '@playwright/test';
+import { covered, settle } from '../support/screen.ts';
 
 const LARGE = { largeCards: true };
 
@@ -70,14 +71,6 @@ async function showPictures(page: Page) {
   });
 }
 
-/** Waits until the camera has come to rest. */
-async function settle(page: Page) {
-  await page.waitForTimeout(150);
-  await expect
-    .poll(() => page.evaluate(() => window.__poolDebug!.cameraSettled()), { timeout: 15000 })
-    .toBe(true);
-}
-
 /** Everything wrong with the layout: parts off the screen, over each other, or cut short. */
 async function problems(page: Page): Promise<string[]> {
   return page.evaluate(() => {
@@ -105,22 +98,6 @@ async function problems(page: Page): Promise<string[]> {
       if (row.scrollWidth > row.clientWidth + 1) found.push('a row of balls cut short');
     }
     return found;
-  });
-}
-
-/** What lies at each pocket's centre and at the cue ball: it must be the table itself. */
-async function covered(page: Page): Promise<string[]> {
-  return page.evaluate(() => {
-    const marks = window.__poolDebug!.landmarks();
-    const points = [...marks.pockets, ...(marks.cueBall ? [marks.cueBall] : [])];
-    return points
-      .map((p) => {
-        const e = document.elementFromPoint(p.x, p.y);
-        const onScreen = p.x >= 0 && p.y >= 0 && p.x <= innerWidth && p.y <= innerHeight;
-        if (!onScreen) return `off screen at ${Math.round(p.x)},${Math.round(p.y)}`;
-        return e?.getAttribute('class') ?? e?.tagName;
-      })
-      .filter((name) => name !== 'scene-canvas') as string[];
   });
 }
 

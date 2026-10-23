@@ -14,29 +14,7 @@
 // leaving their tips standing.
 
 import { expect, test, type Page } from '@playwright/test';
-
-/** What lies at each pocket's centre and at the cue ball: it must be the table itself. */
-async function covered(page: Page): Promise<string[]> {
-  return page.evaluate(() => {
-    const marks = window.__poolDebug!.landmarks();
-    const points = [...marks.pockets, ...(marks.cueBall ? [marks.cueBall] : [])];
-    return points
-      .map((p) => {
-        const e = document.elementFromPoint(p.x, p.y);
-        const onScreen = p.x >= 0 && p.y >= 0 && p.x <= innerWidth && p.y <= innerHeight;
-        return !onScreen ? `off screen at ${Math.round(p.x)},${Math.round(p.y)}` : e?.className;
-      })
-      .filter((name) => name !== 'scene-canvas') as string[];
-  });
-}
-
-/** Waits until the camera has come to rest. */
-async function settle(page: Page) {
-  await page.waitForTimeout(150);
-  await expect
-    .poll(() => page.evaluate(() => window.__poolDebug!.cameraSettled()), { timeout: 15000 })
-    .toBe(true);
-}
+import { covered, settle } from '../support/screen.ts';
 
 /** Parts of the interface reaching past the screen's edges. */
 async function overflowing(page: Page): Promise<string[]> {
