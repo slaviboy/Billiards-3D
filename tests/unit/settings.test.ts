@@ -94,3 +94,13 @@ describe('the settings', () => {
     expect(loadSettings(damaged, PHONE_SETTINGS)).toMatchObject(small);
   });
 });
+
+describe('the hints on hover', () => {
+  it('show by default on every device, and stay off once turned off', () => {
+    expect(loadSettings(storage(), DEFAULT_SETTINGS).hints).toBe(true);
+    expect(loadSettings(storage(), PHONE_SETTINGS).hints).toBe(true);
+    const saved = storage();
+    saveSettings({ ...DEFAULT_SETTINGS, hints: false }, saved);
+    expect(loadSettings(saved, DEFAULT_SETTINGS).hints).toBe(false);
+  });
+});

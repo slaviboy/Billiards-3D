@@ -12,7 +12,7 @@
 // The camera and the aim with the mouse and the keyboard, as on the chess board: a rail's corner
 // turns the view, a rail's side pans it, the wheel zooms, Home brings it back, T switches to the
 // top view; the cloth aims; none of it touches the game. Each shot starts from no power, and a pull
-// taken back to the start of the power bar shoots nothing.
+// taken back to the start of the power bar shoots nothing. The hints on hover can be turned off.
 
 import { expect, test, type Page } from '@playwright/test';
 
@@ -315,4 +315,19 @@ test('the dock names its parts, reads the spin in words, centres it and aims in 
   await page.getByRole('button', { name: 'Aim a touch left (,)' }).click();
   const after = (await debug(page, () => window.__poolDebug!.aim())).heading;
   expect(after - before).toBeCloseTo((0.05 * Math.PI) / 180, 6);
+});
+
+test('the hints on hover can be turned off for play', async ({ page }) => {
+  const tip = () =>
+    page.evaluate(() => getComputedStyle(document.querySelector('.power')!, '::after').content);
+  await page.locator('.power').hover();
+  await expect.poll(tip).toBe('"Pull down and let go to shoot"');
+
+  await page.getByRole('menuitem', { name: 'Help', exact: true }).click();
+  await page.locator('.menu-entry', { hasText: 'Hints on hover' }).click();
+  await page.locator('.power').hover();
+  await expect.poll(tip).toBe('none');
+  expect(await page.evaluate(() => localStorage.getItem('pool.settings.v2'))).toContain(
+    '"hints":false',
+  );
 });

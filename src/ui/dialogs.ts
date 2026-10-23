@@ -244,6 +244,9 @@ export function settingsDialog(store: Store<Settings>): Promise<void> {
     const [menuBar] = switchRow('Menu bar, instead of the menu button', s.menuBar, (on) =>
       set({ menuBar: on }),
     );
+    const [hints] = switchRow('Hints when hovering over the controls', s.hints, (on) =>
+      set({ hints: on }),
+    );
     const [keepZoom] = switchRow('Keep the zoom while turning the view', s.keepZoom, (on) =>
       set({ keepZoom: on }),
     );
@@ -264,6 +267,7 @@ export function settingsDialog(store: Store<Settings>): Promise<void> {
         menuBar,
         large,
         left,
+        hints,
         field('Graphics (takes effect when the page reloads)', quality.element),
       ),
       group('You', field('Name', name)),

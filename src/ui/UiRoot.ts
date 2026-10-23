@@ -309,6 +309,7 @@ export class UiRoot {
     app.settings.subscribe((settings) => {
       this.element.classList.toggle('left-handed', settings.leftHanded);
       this.element.classList.toggle('menu-bar', settings.menuBar);
+      this.element.classList.toggle('no-hints', !settings.hints);
       this.menuHead.hidden = !settings.menuBar;
       this.menuButton.hidden = settings.menuBar;
       if (!settings.menuBar) this.menuBar.close();
@@ -632,7 +633,7 @@ export class UiRoot {
     const sep: MenuItem = { separator: true };
     const toggle = (
       label: string,
-      key: 'keepZoom' | 'largeCards' | 'leftHanded' | 'sound',
+      key: 'keepZoom' | 'largeCards' | 'leftHanded' | 'sound' | 'hints',
       shortcut?: string,
     ): MenuItem => ({
       label,
@@ -762,6 +763,7 @@ export class UiRoot {
         items: () => [
           { label: '&Keyboard and mouse', shortcut: '?', action: () => void controlsDialog() },
           { label: '&Rules of 8-ball', action: () => void rulesDialog() },
+          toggle('&Hints on hover', 'hints'),
           sep,
           {
             label: '&About Pool 3D…',

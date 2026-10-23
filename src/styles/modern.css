@@ -202,6 +202,11 @@
     }
   }
 
+  /* Hints may be turned off for play (Settings); a tip still shows on focus from the keyboard. */
+  .pool-ui.no-hints [data-tip]:hover:not(:focus-visible)::after {
+    content: none;
+  }
+
   /* Near the right edge, tooltips line up with their button's right side. */
   .m-topbar-end > [data-tip]:last-child:hover::after,
   .m-topbar-end > [data-tip]:last-child:focus-visible::after {

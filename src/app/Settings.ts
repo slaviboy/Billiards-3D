@@ -43,6 +43,8 @@ export interface Settings {
   readonly largeCards: boolean;
   /** The menus along the top bar, as in a desktop program, instead of behind the menu button. */
   readonly menuBar: boolean;
+  /** A tip under the pointer, naming a control and how to use it, while hovering over it. */
+  readonly hints: boolean;
   /** The player's name (for two players on one device, the second name too). */
   readonly name: string;
   readonly name2: string;
@@ -63,6 +65,7 @@ export const DEFAULT_SETTINGS: Settings = {
   keepZoom: true,
   largeCards: true,
   menuBar: true,
+  hints: true,
   name: 'Player 1',
   name2: 'Player 2',
   table: '9ft',
@@ -106,6 +109,7 @@ export function sanitize(value: unknown, d: Settings = DEFAULT_SETTINGS): Settin
     keepZoom: typeof v.keepZoom === 'boolean' ? v.keepZoom : d.keepZoom,
     largeCards: typeof v.largeCards === 'boolean' ? v.largeCards : d.largeCards,
     menuBar: typeof v.menuBar === 'boolean' ? v.menuBar : d.menuBar,
+    hints: typeof v.hints === 'boolean' ? v.hints : d.hints,
     name: name(v.name, d.name),
     name2: name(v.name2, d.name2),
     table: isTableSize(v.table) ? v.table : d.table,
