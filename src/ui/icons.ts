@@ -31,6 +31,8 @@ export const LINE_ICONS = {
   chevronRight: line('M9.5 6l6 6-6 6'),
   check: line('M5 12.5l4.5 4.5L19 7.5'),
   menu: line('M4.5 7h15M4.5 12h15M4.5 17h15'),
+  /** An i in a ring: what each part of the screen does. */
+  info: line('M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 11v5.5M12 7.8v.1'),
   pause: line('M8.5 5.5v13M15.5 5.5v13'),
   sliders: line('M4 7h9M17 7h3M4 17h3M11 17h9M15 4.5v5M9 14.5v5'),
   flag: line('M6 21V4M6 4.5h11l-2.5 4 2.5 4H6'),

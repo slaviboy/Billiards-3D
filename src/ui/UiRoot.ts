@@ -38,6 +38,7 @@ import {
 import { EIGHT_BALL, LINE_ICONS } from './icons.ts';
 import type { OnlineHooks } from './online/hooks.ts';
 import { iconButton } from './modern/controls.ts';
+import { GuideOverlay, type GuidePart } from './modern/GuideOverlay.ts';
 import { MenuBar, type Menu, type MenuItem } from './modern/MenuBar.ts';
 import { PlayerCard } from './modern/PlayerCard.ts';
 import { PocketPicker } from './modern/PocketPicker.ts';
@@ -95,6 +96,8 @@ export class UiRoot {
   /** The game's name and the menu bar, at the start of the top bar when the bar is chosen. */
   private readonly menuHead: HTMLElement;
   private readonly picker: PocketPicker;
+  /** The guide behind the (i) button: what each part of the screen does. */
+  private readonly guide = new GuideOverlay();
   private readonly toasts = new Toasts();
   private readonly top: HTMLElement;
   /** Where the cards stand when they are large. */
@@ -151,6 +154,7 @@ export class UiRoot {
     newGame.addEventListener('click', () => void this.menu());
     const buttons = el('div', 'hud-buttons m-topbar-end');
     buttons.append(
+      iconButton(LINE_ICONS.info, 'What each part does', () => this.toggleGuide()),
       this.viewButton,
       iconButton(
         LINE_ICONS.restart,
@@ -295,6 +299,7 @@ export class UiRoot {
       this.bottom,
       this.toasts.element,
       this.picker.element,
+      this.guide.element,
     );
     document.body.append(this.element);
     // A button pressed with the mouse or a finger lets go of the focus, so that Space then shoots
@@ -621,6 +626,106 @@ export class UiRoot {
     this.toasts.show(`${state.setup.names[this.app.match.current.rack.turn]} breaks`);
   }
 
+  /** Opens the guide to the screen's parts, or closes it. */
+  private toggleGuide(): void {
+    if (this.guide.open) {
+      this.guide.close();
+      return;
+    }
+    this.menuBar.close();
+    this.guide.show(this.guideParts());
+  }
+
+  /** The guide's parts, as the screen shows them now: what each is and how to use it. */
+  private guideParts(): GuidePart[] {
+    const { largeCards, leftHanded, menuBar } = this.app.settings.get();
+    // The box round whichever of these elements show (none: no part).
+    const around =
+      (...elements: (HTMLElement | null)[]) =>
+      (): DOMRect | null => {
+        const boxes = elements
+          .filter((e): e is HTMLElement => e !== null)
+          .map((e) => e.getBoundingClientRect())
+          .filter((r) => r.width > 0 && r.height > 0);
+        if (boxes.length === 0) return null;
+        const left = Math.min(...boxes.map((r) => r.left));
+        const top = Math.min(...boxes.map((r) => r.top));
+        const right = Math.max(...boxes.map((r) => r.right));
+        const bottom = Math.max(...boxes.map((r) => r.bottom));
+        return new DOMRect(left, top, right - left, bottom - top);
+      };
+    const find = (selector: string) => this.element.querySelector<HTMLElement>(selector);
+    const cueBall = (): DOMRect | null => {
+      const c = this.app.match.current.balls[0]!;
+      const p = this.app.toClient(c.rx, c.ry, c.rz);
+      return p.visible ? new DOMRect(p.x - 14, p.y - 14, 28, 28) : null;
+    };
+    const side = leftHanded ? 'right' : 'left';
+    // The parts with the least room round them first, so their labels have the first pick.
+    return [
+      {
+        target: around(find('.dock-spin-part')),
+        title: 'Spin',
+        text: 'Drag the red point: up to follow, down to draw back, aside for side. The arrow centres it.',
+        side: 'top',
+      },
+      {
+        target: around(find('.dock-aim-part')),
+        title: 'Fine aim',
+        text: 'Drag the wheel, or press the arrows, to turn the aim a touch.',
+        side: 'top',
+      },
+      {
+        target: around(find('.dock-cue-part')),
+        title: 'Cue',
+        text: 'Slide up to raise the cue. Safety, called before a shot, gives up the table after it.',
+        side: 'top',
+      },
+      {
+        target: around(find('.status-pill')),
+        title: 'Status',
+        text: 'Whose turn it is, and what to do.',
+        side: 'top',
+      },
+      {
+        target: around(this.power.element),
+        title: 'Power',
+        text: 'Pull the grip down and let go to shoot. Back at the top, letting go shoots nothing.',
+        side,
+      },
+      {
+        target: cueBall,
+        title: 'Aim and the view',
+        text: "Drag on the cloth to aim (with a finger, sweep round the cue ball). Drag a rail's corner to turn the view, its side to pan; the wheel zooms.",
+        side: 'right',
+      },
+      {
+        target: largeCards ? around(this.players) : around(...this.cards.map((c) => c.element)),
+        title: 'Players',
+        text: 'Racks won, with the race as pips; the group, how many are pocketed, and the balls. The ring runs down with the shot clock.',
+        side: largeCards ? (leftHanded ? 'left' : 'right') : 'bottom',
+      },
+      {
+        target: around(menuBar ? this.menuBar.element : this.menuButton),
+        title: 'Menus',
+        text: 'A new game, the view, the settings and the rules.',
+        side: 'bottom',
+      },
+      {
+        target: around(find('.m-new-game')),
+        title: 'New game',
+        text: 'Practice, a match on this device, or one online.',
+        side: 'bottom',
+      },
+      {
+        target: around(this.viewButton, find('.hud-reset'), find('.hud-fullscreen')),
+        title: 'View',
+        text: 'The 3D or the top view (T), the view as it began (Home), full screen.',
+        side: 'bottom',
+      },
+    ];
+  }
+
   private toggleFullscreen(): void {
     if (document.fullscreenElement) void document.exitFullscreen();
     else void document.documentElement.requestFullscreen?.().catch(() => undefined);
@@ -764,6 +869,7 @@ export class UiRoot {
           { label: '&Keyboard and mouse', shortcut: '?', action: () => void controlsDialog() },
           { label: '&Rules of 8-ball', action: () => void rulesDialog() },
           toggle('&Hints on hover', 'hints'),
+          { label: '&What each part does', action: () => this.toggleGuide() },
           sep,
           {
             label: '&About Pool 3D…',
@@ -776,6 +882,14 @@ export class UiRoot {
 
   private onKey(event: KeyboardEvent): void {
     if (dialogOpen()) return;
+    // The guide takes the keys while it is open; Escape closes it.
+    if (this.guide.open) {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        this.guide.close();
+      }
+      return;
+    }
     // An open menu takes the keys (its own handle them where it has the focus); Escape shuts it.
     if (this.menuBar.isOpen) {
       if (event.key === 'Escape') {

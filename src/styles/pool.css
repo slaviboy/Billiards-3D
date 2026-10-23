@@ -852,6 +852,93 @@
     cursor: default;
   }
 
+  /*
+   * The guide behind the (i) button: the screen dimmed but for the parts of the interface, each
+   * ringed in gold, with a gold line from each to its label (GuideOverlay places them).
+   */
+  .guide {
+    position: fixed;
+    inset: 0;
+    z-index: 45;
+    cursor: pointer;
+    animation: m-fade 0.18s ease-out;
+  }
+
+  .guide[hidden] {
+    display: none;
+  }
+
+  .guide-lines,
+  .guide-labels {
+    position: absolute;
+    inset: 0;
+  }
+
+  .guide-shade {
+    fill: rgba(6, 7, 10, 0.66);
+  }
+
+  .guide-ring {
+    fill: none;
+    stroke: var(--m-gold);
+    stroke-width: 1.5;
+    stroke-dasharray: 5 4;
+  }
+
+  .guide-line {
+    stroke: var(--m-gold);
+    stroke-width: 1.5;
+  }
+
+  .guide-dot {
+    fill: var(--m-gold);
+  }
+
+  .guide-label {
+    position: absolute;
+    box-sizing: border-box;
+    max-width: min(24rem, 44vw);
+    padding: 0.7rem 0.9rem;
+    border: 1px solid var(--m-gold-line);
+    border-radius: 1.1rem;
+    background: var(--m-surface-strong);
+    box-shadow: var(--m-shadow);
+    color: var(--m-text);
+    font: 400 1.2rem/1.4 var(--m-font);
+  }
+
+  .guide-title {
+    margin-bottom: 0.2rem;
+    color: var(--m-gold-hi);
+    font: 700 1rem var(--m-font);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  /* On a phone the labels are tighter, so that every one finds room. */
+  @media (max-width: 640px) {
+    .guide-label {
+      max-width: 46vw;
+      padding: 0.5rem 0.7rem;
+      font-size: 1.1rem;
+      line-height: 1.3;
+    }
+
+    .guide-title {
+      font-size: 0.95rem;
+    }
+  }
+
+  .guide-close {
+    position: absolute;
+    padding: 0.5rem 1.2rem;
+    border-radius: 1.4rem;
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--m-muted);
+    font: 500 1.15rem var(--m-font);
+    white-space: nowrap;
+  }
+
   /* Notes after a shot, under the cards (UiRoot measures where the top's parts end). */
   .toasts {
     position: fixed;
