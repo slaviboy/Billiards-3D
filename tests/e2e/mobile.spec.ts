@@ -70,6 +70,11 @@ for (const [name, width, height] of [
       expect(aim.b).toBeGreaterThan(0.2);
       expect(Math.abs(aim.a)).toBeLessThan(0.05);
       expect(await tip('.spin-ball')).toBe('none');
+      // A tap high on the cue elevation's groove raises the cue.
+      const groove = (await page.locator('.elevation-track').boundingBox())!;
+      await page.touchscreen.tap(groove.x + groove.width / 2, groove.y + groove.height * 0.2);
+      expect((await page.evaluate(() => window.__poolDebug!.aim())).elevation).toBeGreaterThan(20);
+      expect(await tip('.spin-elevation')).toBe('none');
       // A tap on the power bar is a press and a release: it shoots.
       const track = (await page.locator('.power-track').boundingBox())!;
       await page.evaluate(() => window.__poolDebug!.setPlaybackSpeed(8));

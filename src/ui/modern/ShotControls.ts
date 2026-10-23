@@ -202,9 +202,10 @@ export class SpinPad {
   readonly element: HTMLElement;
   private readonly ball: HTMLElement;
   private readonly dot: HTMLElement;
-  private readonly elevation: HTMLInputElement;
+  private readonly elevation: HTMLElement;
   private readonly elevationValue: HTMLElement;
   private dragging = -1;
+  private raising = -1;
 
   constructor(private readonly handlers: SpinHandlers) {
     this.element = el('div', 'spin');
@@ -216,14 +217,18 @@ export class SpinPad {
     const limit = el('div', 'spin-limit');
     this.dot = el('div', 'spin-dot');
     this.ball.append(limit, this.dot);
-    const side = el('label', 'spin-elevation');
+    // The cue's elevation: a groove as wide as a finger, dragged anywhere along it (up raises the
+    // cue), or stepped with the arrow keys.
+    const side = el('div', 'spin-elevation');
     side.dataset.tip = 'Cue elevation';
-    this.elevation = el('input');
-    this.elevation.type = 'range';
-    this.elevation.min = '0';
-    this.elevation.max = String(MAX_ELEVATION);
-    this.elevation.step = '1';
+    this.elevation = el('div', 'elevation-track');
+    this.elevation.tabIndex = 0;
+    this.elevation.setAttribute('role', 'slider');
     this.elevation.setAttribute('aria-label', 'Cue elevation in degrees');
+    this.elevation.setAttribute('aria-orientation', 'vertical');
+    this.elevation.setAttribute('aria-valuemin', '0');
+    this.elevation.setAttribute('aria-valuemax', String(MAX_ELEVATION));
+    this.elevation.append(el('div', 'elevation-fill'), el('div', 'elevation-grip'));
     this.elevationValue = el('span', 'spin-elevation-value');
     side.append(this.elevation, this.elevationValue);
     this.element.append(this.ball, side);
@@ -247,10 +252,52 @@ export class SpinPad {
       if (this.handlers.enabled()) this.handlers.setTip(0, 0);
       this.render();
     });
-    this.elevation.addEventListener('input', () => {
-      this.handlers.setElevation(Number(this.elevation.value));
+    this.elevation.addEventListener('pointerdown', (event) => {
+      if (!this.handlers.enabled()) return;
+      event.preventDefault();
+      this.raising = event.pointerId;
+      capture(this.elevation, event.pointerId);
+      this.raiseTo(event.clientY);
+    });
+    this.elevation.addEventListener('pointermove', (event) => {
+      if (event.pointerId === this.raising) this.raiseTo(event.clientY);
+    });
+    const lower = (event: PointerEvent) => {
+      if (event.pointerId === this.raising) this.raising = -1;
+    };
+    this.elevation.addEventListener('pointerup', lower);
+    this.elevation.addEventListener('pointercancel', lower);
+    this.elevation.addEventListener('keydown', (event) => {
+      if (!this.handlers.enabled()) return;
+      const degrees = Math.round(this.handlers.elevation());
+      const next =
+        event.key === 'ArrowUp' || event.key === 'ArrowRight'
+          ? degrees + 1
+          : event.key === 'ArrowDown' || event.key === 'ArrowLeft'
+            ? degrees - 1
+            : event.key === 'PageUp'
+              ? degrees + 5
+              : event.key === 'PageDown'
+                ? degrees - 5
+                : event.key === 'Home'
+                  ? 0
+                  : event.key === 'End'
+                    ? MAX_ELEVATION
+                    : null;
+      if (next === null) return;
+      // The keys work the slider here, not the camera.
+      event.preventDefault();
+      event.stopPropagation();
+      this.handlers.setElevation(Math.max(0, Math.min(MAX_ELEVATION, next)));
       this.render();
     });
+  }
+
+  private raiseTo(clientY: number): void {
+    const rect = this.elevation.getBoundingClientRect();
+    const share = 1 - (clientY - rect.top) / Math.max(1, rect.height);
+    this.handlers.setElevation(Math.round(Math.max(0, Math.min(1, share)) * MAX_ELEVATION));
+    this.render();
   }
 
   private moveTo(clientX: number, clientY: number): void {
@@ -274,11 +321,12 @@ export class SpinPad {
     this.dot.style.left = `${50 - a * 50}%`;
     this.dot.style.top = `${50 - b * 50}%`;
     const degrees = Math.round(this.handlers.elevation());
-    if (document.activeElement !== this.elevation) this.elevation.value = String(degrees);
+    this.elevation.style.setProperty('--elevation', String(degrees / MAX_ELEVATION));
+    this.elevation.setAttribute('aria-valuenow', String(degrees));
     this.elevationValue.textContent = `${degrees}°`;
     const enabled = this.handlers.enabled();
     this.element.classList.toggle('disabled', !enabled);
-    this.elevation.disabled = !enabled;
+    this.elevation.setAttribute('aria-disabled', String(!enabled));
   }
 }
 
